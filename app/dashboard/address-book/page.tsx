@@ -51,7 +51,7 @@ export default function AddressBookPage() {
         {contacts.length > 0 ? (
           <List>
             {contacts.map(([cName, cAddr]) => (
-              <Paper key={cAddr} sx={{ mb: 2, borderRadius: 3, overflow: 'hidden', border: '1px solid', borderColor: 'border' }}>
+              <Paper key={cAddr} sx={{ mb: 2, borderRadius: 1.5, overflow: 'hidden', border: '1px solid', borderColor: 'border' }}>
                 <ListItem 
                   secondaryAction={
                     <Box>
@@ -77,12 +77,12 @@ export default function AddressBookPage() {
         ) : (
           <Box sx={{ mt: 10, textAlign: 'center', p: 4 }}>
             <Typography variant="body1" color="text.muted">Your address book is empty</Typography>
-            <Button variant="outlined" sx={{ mt: 2, borderRadius: 3 }} onClick={() => setOpen(true)}>Add your first contact</Button>
+            <Button variant="outlined" sx={{ mt: 2, borderRadius: 1.5 }} onClick={() => setOpen(true)}>Add your first contact</Button>
           </Box>
         )}
       </Box>
 
-      <Dialog open={open} onClose={() => setOpen(false)} PaperProps={{ sx: { borderRadius: 4, width: '100%', maxWidth: 400 } }}>
+      <Dialog open={open} onClose={() => setOpen(false)} PaperProps={{ sx: { borderRadius: 2, width: '100%', maxWidth: 400 } }}>
         <DialogTitle sx={{ fontWeight: 800 }}>Add Contact</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
           <TextField 
@@ -91,7 +91,7 @@ export default function AddressBookPage() {
             variant="outlined" 
             value={name} 
             onChange={(e) => setName(e.target.value)} 
-            InputProps={{ sx: { borderRadius: 3 } }}
+            InputProps={{ sx: { borderRadius: 1.5 } }}
           />
           <TextField 
             fullWidth 
@@ -100,12 +100,12 @@ export default function AddressBookPage() {
             placeholder="0x..."
             value={address} 
             onChange={(e) => setAddress(e.target.value)} 
-            InputProps={{ sx: { borderRadius: 3 } }}
+            InputProps={{ sx: { borderRadius: 1.5 } }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAdd} disabled={!name || !address.startsWith('0x')} sx={{ borderRadius: 3 }}>
+          <Button variant="contained" onClick={handleAdd} disabled={!name || !address.startsWith('0x')} sx={{ borderRadius: 1.5 }}>
             Save Contact
           </Button>
         </DialogActions>

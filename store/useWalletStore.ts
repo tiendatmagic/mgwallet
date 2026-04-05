@@ -29,7 +29,7 @@ interface WalletStore {
   
   // Persisted settings
   customTokens: Token[];
-  customChains: Chain[];
+  networks: Chain[];
   addressBook: Record<string, string>; // name -> address
   
   // Actions
@@ -41,8 +41,10 @@ interface WalletStore {
   updatePrices: () => Promise<void>;
   updateTransactions: () => Promise<void>;
   addToken: (token: Token) => void;
-  addCustomChain: (chain: Chain) => void;
-  removeCustomChain: (chainId: number) => void;
+  addNetwork: (chain: Chain) => void;
+  updateNetwork: (chainId: number, chain: Partial<Chain>) => void;
+  removeNetwork: (chainId: number) => void;
+  resetNetworks: () => void;
   upsertContact: (name: string, address: string) => void;
   reset: () => void;
 }
@@ -60,7 +62,7 @@ export const useWalletStore = create<WalletStore>()(
       prices: {},
       transactions: [],
       customTokens: [],
-      customChains: [],
+      networks: Object.values(DEFAULT_CHAINS),
       addressBook: {},
 
       setChainId: (chainId: number) => {
@@ -75,7 +77,7 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       unlock: async (password: string) => {
-        const { encryptedWallet, customChains } = get();
+        const { encryptedWallet } = get();
         if (!encryptedWallet) return false;
 
         try {
@@ -107,12 +109,17 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       updateBalance: async () => {
-        const { address, chainId, customTokens, customChains } = get();
+        const { address, chainId, customTokens, networks } = get();
         if (!address) return;
 
         try {
-          const chain = getChain(chainId, customChains);
-          const provider = new JsonRpcProvider(chain.rpc);
+          const chain = networks.find(n => n.id === chainId) || getChain(chainId);
+          // Fix: Pass explicit network info to ensure it's truly static and skip detection
+          const provider = new JsonRpcProvider(
+            chain.rpc, 
+            { chainId: chain.id, name: chain.name.toLowerCase() }, 
+            { staticNetwork: true }
+          );
           
           // 1. Update native balance
           const balanceWei = await provider.getBalance(address);
@@ -127,9 +134,10 @@ export const useWalletStore = create<WalletStore>()(
           const tokenBals: TokenBalance[] = await Promise.all(
             tokensToFetch.map(async (token) => {
               try {
-                const { balance } = await fetchTokenBalance(chain.rpc, token.address, address);
+                const { balance } = await fetchTokenBalance(chain.rpc, token.address, address, chainId);
                 return { ...token, balance, usdValue: 0 };
               } catch (e) {
+                console.warn(`Failed to fetch balance for ${token.symbol}:`, e);
                 return { ...token, balance: '0', usdValue: 0 };
               }
             })
@@ -137,7 +145,7 @@ export const useWalletStore = create<WalletStore>()(
 
           set({ balance: nativeBal, tokenBalances: tokenBals });
         } catch (error) {
-          console.error('Balance update failed:', error);
+          console.error(`Balance update failed for chain ${chainId}:`, error);
         }
       },
 
@@ -152,9 +160,14 @@ export const useWalletStore = create<WalletStore>()(
 
       updateTransactions: async () => {
         const { address, chainId } = get();
-        if (!address || !DEFAULT_CHAINS[chainId]) return; // History only for default chains
-        const txs = await getTransactionHistory(address, chainId);
-        set({ transactions: txs });
+        if (!address || !DEFAULT_CHAINS[chainId]) return;
+        try {
+          const txs = await getTransactionHistory(address, chainId);
+          set({ transactions: txs });
+        } catch (error) {
+          console.warn(`Failed to fetch transactions for chain ${chainId}:`, error);
+          set({ transactions: [] }); // Fallback to empty list
+        }
       },
 
       addToken: (token: Token) => {
@@ -162,15 +175,28 @@ export const useWalletStore = create<WalletStore>()(
         get().updateBalance();
       },
 
-      addCustomChain: (chain: Chain) => {
-        set((state) => ({ customChains: [...state.customChains, chain] }));
+      addNetwork: (chain: Chain) => {
+        set((state) => ({
+          networks: [...state.networks.filter(n => n.id !== chain.id), chain]
+        }));
       },
 
-      removeCustomChain: (chainId: number) => {
-        set((state) => ({ 
-          customChains: state.customChains.filter(c => c.id !== chainId),
+      updateNetwork: (chainId: number, chainUpdate: Partial<Chain>) => {
+        set((state) => ({
+          networks: state.networks.map(n => n.id === chainId ? { ...n, ...chainUpdate } : n)
+        }));
+      },
+
+      removeNetwork: (chainId: number) => {
+        set((state) => ({
+          networks: state.networks.filter((c) => c.id !== chainId),
+          // If the removed chain was the current one, switch to default
           chainId: state.chainId === chainId ? DEFAULT_CHAIN_ID : state.chainId
         }));
+      },
+
+      resetNetworks: () => {
+        set({ networks: Object.values(DEFAULT_CHAINS) });
       },
 
       upsertContact: (name: string, address: string) => {
@@ -190,7 +216,7 @@ export const useWalletStore = create<WalletStore>()(
           prices: {},
           transactions: [],
           customTokens: [],
-          customChains: [],
+          networks: Object.values(DEFAULT_CHAINS),
           addressBook: {},
         });
         localStorage.removeItem('mgwallet-store');
@@ -204,7 +230,7 @@ export const useWalletStore = create<WalletStore>()(
         address: state.address,
         chainId: state.chainId,
         customTokens: state.customTokens,
-        customChains: state.customChains,
+        networks: state.networks,
         addressBook: state.addressBook,
       }),
     }

@@ -13,18 +13,32 @@ export const CHAIN_PRICE_IDS: Record<number, string> = {
   42161: 'ethereum', // Arbitrum uses ETH
 };
 
+let priceCache: { data: Record<string, number>, timestamp: number } | null = null;
+const CACHE_DURATION = 120000; // 2 minutes
+
 /**
  * Fetches current prices for supported tokens
  * Uses the free/no-key tier of CoinGecko
  */
 export async function fetchLivePrices(chainIds: number[]): Promise<Record<string, number>> {
+  const now = Date.now();
+  if (priceCache && (now - priceCache.timestamp < CACHE_DURATION)) {
+    return priceCache.data;
+  }
+
   try {
-    const uniqueIds = Array.from(new Set(chainIds.map(id => CHAIN_PRICE_IDS[id])));
+    const uniqueIds = Array.from(new Set(Object.values(CHAIN_PRICE_IDS)));
     const idsString = uniqueIds.join(',');
     
+    // Using simple fetch with error handling for 429
     const response = await fetch(
       `${COINGECKO_API_BASE}/simple/price?ids=${idsString}&vs_currencies=usd`
     );
+    
+    if (response.status === 429) {
+      console.warn('Coingecko rate limit (429) - using cached prices if available');
+      return priceCache?.data || {};
+    }
     
     if (!response.ok) throw new Error('Price fetch failed');
     
@@ -37,10 +51,11 @@ export async function fetchLivePrices(chainIds: number[]): Promise<Record<string
       }
     }
     
+    priceCache = { data: result, timestamp: now };
     return result;
   } catch (error) {
     console.error('Coingecko price fetch error:', error);
-    return {};
+    return priceCache?.data || {};
   }
 }
 

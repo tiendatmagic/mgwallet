@@ -17,7 +17,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
   1: {
     id: 1,
     name: 'Ethereum',
-    rpc: 'https://eth.llamarpc.com',
+    rpc: 'https://ethereum-rpc.publicnode.com',
     explorer: 'https://etherscan.io',
     symbol: 'ETH',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
@@ -26,7 +26,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
   42161: {
     id: 42161,
     name: 'Arbitrum One',
-    rpc: 'https://arbitrum.llamarpc.com',
+    rpc: 'https://arbitrum-one-rpc.publicnode.com',
     explorer: 'https://arbiscan.io',
     symbol: 'ETH',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
@@ -35,7 +35,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
   56: {
     id: 56,
     name: 'BNB Smart Chain',
-    rpc: 'https://binance.llamarpc.com',
+    rpc: 'https://bsc-rpc.publicnode.com',
     explorer: 'https://bscscan.com',
     symbol: 'BNB',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png',
@@ -44,7 +44,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
   137: {
     id: 137,
     name: 'Polygon PoS',
-    rpc: 'https://polygon.llamarpc.com',
+    rpc: 'https://polygon-bor-rpc.publicnode.com',
     explorer: 'https://polygonscan.com',
     symbol: 'MATIC',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png',
