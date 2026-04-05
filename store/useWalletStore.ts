@@ -1,9 +1,17 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { JsonRpcProvider, formatEther, Wallet, HDNodeWallet, Contract, parseUnits } from 'ethers';
-import { Chain, getChain, DEFAULT_CHAIN_ID } from '@/lib/blockchain/chains';
+import { Chain, getChain, DEFAULT_CHAINS, DEFAULT_CHAIN_ID } from '@/lib/blockchain/chains';
 import { WalletData } from '@/lib/wallet/manager';
 import { decryptData } from '@/lib/crypto/encryption';
+import { POPULAR_TOKENS, Token, fetchTokenBalance } from '@/lib/blockchain/tokens';
+import { fetchLivePrices, CHAIN_PRICE_IDS } from '@/lib/blockchain/prices';
+import { getTransactionHistory, Transaction } from '@/lib/blockchain/explorer';
+
+interface TokenBalance extends Token {
+  balance: string;
+  usdValue: number;
+}
 
 interface WalletStore {
   // Persistence
@@ -13,8 +21,16 @@ interface WalletStore {
   
   // In-memory (not persisted)
   decryptedWallet: Wallet | HDNodeWallet | null;
-  balance: string;
+  balance: string; // Native balance
+  tokenBalances: TokenBalance[];
   isLocked: boolean;
+  prices: Record<string, number>;
+  transactions: Transaction[];
+  
+  // Persisted settings
+  customTokens: Token[];
+  customChains: Chain[];
+  addressBook: Record<string, string>; // name -> address
   
   // Actions
   setChainId: (chainId: number) => void;
@@ -22,6 +38,12 @@ interface WalletStore {
   unlock: (password: string) => Promise<boolean>;
   setWallet: (encryptedWallet: string, address: string) => void;
   updateBalance: () => Promise<void>;
+  updatePrices: () => Promise<void>;
+  updateTransactions: () => Promise<void>;
+  addToken: (token: Token) => void;
+  addCustomChain: (chain: Chain) => void;
+  removeCustomChain: (chainId: number) => void;
+  upsertContact: (name: string, address: string) => void;
   reset: () => void;
 }
 
@@ -33,11 +55,19 @@ export const useWalletStore = create<WalletStore>()(
       chainId: DEFAULT_CHAIN_ID,
       decryptedWallet: null,
       balance: '0.00',
+      tokenBalances: [],
       isLocked: true,
+      prices: {},
+      transactions: [],
+      customTokens: [],
+      customChains: [],
+      addressBook: {},
 
       setChainId: (chainId: number) => {
         set({ chainId });
         get().updateBalance();
+        get().updateTransactions();
+        get().updatePrices();
       },
 
       lock: () => {
@@ -45,7 +75,7 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       unlock: async (password: string) => {
-        const { encryptedWallet } = get();
+        const { encryptedWallet, customChains } = get();
         if (!encryptedWallet) return false;
 
         try {
@@ -63,6 +93,8 @@ export const useWalletStore = create<WalletStore>()(
 
           set({ decryptedWallet: wallet, isLocked: false });
           get().updateBalance();
+          get().updateTransactions();
+          get().updatePrices();
           return true;
         } catch (error) {
           console.error('Unlock failed:', error);
@@ -75,17 +107,76 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       updateBalance: async () => {
-        const { address, chainId } = get();
+        const { address, chainId, customTokens, customChains } = get();
         if (!address) return;
 
         try {
-          const chain = getChain(chainId);
+          const chain = getChain(chainId, customChains);
           const provider = new JsonRpcProvider(chain.rpc);
+          
+          // 1. Update native balance
           const balanceWei = await provider.getBalance(address);
-          set({ balance: formatEther(balanceWei) });
+          const nativeBal = formatEther(balanceWei);
+          
+          // 2. Update popular & custom tokens
+          const tokensToFetch = [
+            ...(POPULAR_TOKENS[chainId] || []),
+            ...customTokens.filter(t => t.chainId === chainId)
+          ];
+
+          const tokenBals: TokenBalance[] = await Promise.all(
+            tokensToFetch.map(async (token) => {
+              try {
+                const { balance } = await fetchTokenBalance(chain.rpc, token.address, address);
+                return { ...token, balance, usdValue: 0 };
+              } catch (e) {
+                return { ...token, balance: '0', usdValue: 0 };
+              }
+            })
+          );
+
+          set({ balance: nativeBal, tokenBalances: tokenBals });
         } catch (error) {
           console.error('Balance update failed:', error);
         }
+      },
+
+      updatePrices: async () => {
+        const { chainId } = get();
+        // Prices only for default chains for now to avoid Coingecko mismatch
+        if (DEFAULT_CHAINS[chainId]) {
+          const prices = await fetchLivePrices([chainId]);
+          set({ prices });
+        }
+      },
+
+      updateTransactions: async () => {
+        const { address, chainId } = get();
+        if (!address || !DEFAULT_CHAINS[chainId]) return; // History only for default chains
+        const txs = await getTransactionHistory(address, chainId);
+        set({ transactions: txs });
+      },
+
+      addToken: (token: Token) => {
+        set((state) => ({ customTokens: [...state.customTokens, token] }));
+        get().updateBalance();
+      },
+
+      addCustomChain: (chain: Chain) => {
+        set((state) => ({ customChains: [...state.customChains, chain] }));
+      },
+
+      removeCustomChain: (chainId: number) => {
+        set((state) => ({ 
+          customChains: state.customChains.filter(c => c.id !== chainId),
+          chainId: state.chainId === chainId ? DEFAULT_CHAIN_ID : state.chainId
+        }));
+      },
+
+      upsertContact: (name: string, address: string) => {
+        set((state) => ({ 
+          addressBook: { ...state.addressBook, [name]: address } 
+        }));
       },
 
       reset: () => {
@@ -94,7 +185,13 @@ export const useWalletStore = create<WalletStore>()(
           address: null,
           decryptedWallet: null,
           balance: '0.00',
+          tokenBalances: [],
           isLocked: true,
+          prices: {},
+          transactions: [],
+          customTokens: [],
+          customChains: [],
+          addressBook: {},
         });
         localStorage.removeItem('mgwallet-store');
       }
@@ -106,6 +203,9 @@ export const useWalletStore = create<WalletStore>()(
         encryptedWallet: state.encryptedWallet,
         address: state.address,
         chainId: state.chainId,
+        customTokens: state.customTokens,
+        customChains: state.customChains,
+        addressBook: state.addressBook,
       }),
     }
   )

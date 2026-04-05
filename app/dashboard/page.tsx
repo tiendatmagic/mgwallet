@@ -8,7 +8,7 @@ import {
   Avatar, CircularProgress, TextField, InputAdornment, 
   Stack, Divider, List, ListItem, ListItemAvatar, ListItemText,
   Badge, Menu, MenuItem, Dialog, DialogTitle, DialogContent, 
-  DialogActions, Tooltip
+  DialogActions, Tooltip, ToggleButton, ToggleButtonGroup, Chip
 } from '@mui/material';
 import { 
   LockOutlined, 
@@ -24,9 +24,10 @@ import {
   History,
   NorthEast,
   SouthWest,
-  Logout
+  Logout,
+  Person
 } from '@mui/icons-material';
-import { getChain, CHAINS } from '@/lib/blockchain/chains';
+import { getChain, DEFAULT_CHAINS } from '@/lib/blockchain/chains';
 import { QRCodeSVG } from 'qrcode.react';
 
 /**
@@ -36,8 +37,9 @@ import { QRCodeSVG } from 'qrcode.react';
 export default function DashboardPage() {
   const router = useRouter();
   const { 
-    address, encryptedWallet, isLocked, chainId, balance,
-    unlock, lock, updateBalance, setChainId, reset
+    address, encryptedWallet, isLocked, chainId, balance, tokenBalances,
+    unlock, lock, updateBalance, setChainId, reset, prices, transactions,
+    addToken, addressBook, customChains
   } = useWalletStore();
 
   const [password, setPassword] = useState('');
@@ -46,11 +48,15 @@ export default function DashboardPage() {
   const [networkMenuAnchor, setNetworkMenuAnchor] = useState<null | HTMLElement>(null);
   const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [addTokenDialogOpen, setAddTokenDialogOpen] = useState(false);
+  const [newTokenAddress, setNewTokenAddress] = useState('');
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
+  const [gasPriority, setGasPriority] = useState<'slow' | 'average' | 'fast'>('average');
   const [txLoading, setTxLoading] = useState(false);
   const [txHash, setTxHash] = useState('');
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<'assets' | 'activity'>('assets');
 
   useEffect(() => {
     if (!encryptedWallet || !address) {
@@ -109,6 +115,8 @@ export default function DashboardPage() {
   };
 
   const currentChain = getChain(chainId);
+  const nativePrice = prices[currentChain.name.toLowerCase()] || prices['ethereum'] || 0;
+  const portfolioUsd = (parseFloat(balance) * nativePrice).toFixed(2);
 
   // --- UNLOCK SCREEN ---
   if (isLocked) {
@@ -183,9 +191,10 @@ export default function DashboardPage() {
             anchorEl={networkMenuAnchor}
             open={Boolean(networkMenuAnchor)}
             onClose={() => setNetworkMenuAnchor(null)}
-            PaperProps={{ sx: { borderRadius: 3, mt: 1, minWidth: 200 } }}
+            PaperProps={{ sx: { borderRadius: 3, mt: 1, minWidth: 220 } }}
           >
-            {Object.values(CHAINS).map((chain) => (
+            <Typography variant="overline" sx={{ px: 2, pt: 1, display: 'block', color: 'text.muted' }}>Default Networks</Typography>
+            {Object.values(DEFAULT_CHAINS).map((chain) => (
               <MenuItem 
                 key={chain.id} 
                 onClick={() => { setChainId(chain.id); setNetworkMenuAnchor(null); }}
@@ -197,6 +206,34 @@ export default function DashboardPage() {
                 <ListItemText primary={chain.name} />
               </MenuItem>
             ))}
+            
+            {customChains.length > 0 && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="overline" sx={{ px: 2, display: 'block', color: 'text.muted' }}>Custom Networks</Typography>
+                {customChains.map((chain) => (
+                  <MenuItem 
+                    key={chain.id} 
+                    onClick={() => { setChainId(chain.id); setNetworkMenuAnchor(null); }}
+                    selected={chainId === chain.id}
+                  >
+                    <ListItemAvatar sx={{ minWidth: 36 }}>
+                      <Avatar sx={{ width: 24, height: 24, bgcolor: 'secondary.main' }}>{chain.symbol[0]}</Avatar>
+                    </ListItemAvatar>
+                    <ListItemText primary={chain.name} />
+                  </MenuItem>
+                ))}
+              </>
+            )}
+            <Divider sx={{ my: 1 }} />
+            <MenuItem onClick={() => { router.push('/dashboard/networks'); setNetworkMenuAnchor(null); }}>
+              <ListItemAvatar sx={{ minWidth: 36 }}>
+                <Avatar sx={{ width: 24, height: 24, bgcolor: 'transparent', border: '1px dashed', borderColor: 'primary.main' }}>
+                  <Settings sx={{ fontSize: 14, color: 'primary.main' }} />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText primary="Manage Networks" sx={{ color: 'primary.main' }} />
+            </MenuItem>
           </Menu>
           <IconButton size="small" onClick={lock} sx={{ ml: 1 }}>
             <Logout sx={{ fontSize: 20, color: 'text.muted' }} />
@@ -209,8 +246,11 @@ export default function DashboardPage() {
         <Typography variant="caption" sx={{ color: 'text.muted', letterSpacing: 1, fontWeight: 700 }}>
           TOTAL BALANCE
         </Typography>
-        <Typography variant="h2" sx={{ fontWeight: 800, mt: 1, mb: 1 }}>
+        <Typography variant="h2" sx={{ fontWeight: 800, mt: 1, mb: 0 }}>
           {balance} <span style={{ fontSize: '1.5rem', fontWeight: 500 }}>{currentChain.symbol}</span>
+        </Typography>
+        <Typography variant="h6" sx={{ color: 'text.muted', fontWeight: 600, mb: 1 }}>
+          ${portfolioUsd}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
           <Typography variant="body2" sx={{ color: 'text.muted', fontFamily: 'monospace' }}>
@@ -243,41 +283,133 @@ export default function DashboardPage() {
           <Typography variant="caption" fontWeight={600}>Refresh</Typography>
         </Stack>
         <Stack alignItems="center" gap={1}>
-          <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: 'background.default', border: '1px solid', borderColor: 'border', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <Settings sx={{ color: 'primary.main' }} />
+          <Box 
+            onClick={() => router.push('/dashboard/address-book')}
+            sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: 'background.default', border: '1px solid', borderColor: 'border', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <Person sx={{ color: 'primary.main' }} />
           </Box>
-          <Typography variant="caption" fontWeight={600}>Settings</Typography>
+          <Typography variant="caption" fontWeight={600}>Contacts</Typography>
         </Stack>
       </Box>
 
       {/* Assets / Activity Tabs */}
-      <Paper sx={{ mt: 3, flex: 1, borderRadius: '32px 32px 0 0', p: 2, boxShadow: '0 -4px 20px rgba(0,0,0,0.03)' }}>
+      <Paper sx={{ mt: 3, flex: 1, borderRadius: '32px 32px 0 0', p: 2, boxShadow: '0 -4px 20px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ px: 2, py: 1, display: 'flex', gap: 3, borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ pb: 1, borderBottom: 2, borderColor: 'primary.main', color: 'primary.main' }}>Assets</Typography>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ pb: 1, color: 'text.muted' }}>Activity</Typography>
-        </Box>
-
-        <List>
-          <ListItem 
-            sx={{ px: 1, borderRadius: 3, '&:hover': { bgcolor: 'surface' } }}
-            secondaryAction={
-              <Box textAlign="right">
-                <Typography fontWeight={700}>{balance}</Typography>
-                <Typography variant="caption" color="text.muted">$0.00</Typography>
-              </Box>
-            }
+          <Typography 
+            variant="subtitle2" 
+            fontWeight={700} 
+            onClick={() => setActiveTab('assets')}
+            sx={{ 
+              pb: 1, cursor: 'pointer',
+              borderBottom: activeTab === 'assets' ? 2 : 0, 
+              borderColor: 'primary.main', 
+              color: activeTab === 'assets' ? 'primary.main' : 'text.muted' 
+            }}
           >
-            <ListItemAvatar>
-              <Avatar src={currentChain.logo} />
-            </ListItemAvatar>
-            <ListItemText primary={currentChain.symbol} secondary={currentChain.name} />
-          </ListItem>
-        </List>
-
-        <Box sx={{ mt: 4, textAlign: 'center', p: 4 }}>
-          <History sx={{ fontSize: 48, color: 'text.muted', opacity: 0.3, mb: 1 }} />
-          <Typography variant="body2" color="text.muted">No recent activity</Typography>
+            Assets
+          </Typography>
+          <Typography 
+            variant="subtitle2" 
+            fontWeight={700} 
+            onClick={() => setActiveTab('activity')}
+            sx={{ 
+              pb: 1, cursor: 'pointer',
+              borderBottom: activeTab === 'activity' ? 2 : 0, 
+              borderColor: 'primary.main', 
+              color: activeTab === 'activity' ? 'primary.main' : 'text.muted' 
+            }}
+          >
+            Activity
+          </Typography>
         </Box>
+
+        {activeTab === 'assets' ? (
+          <Box sx={{ flex: 1, overflowY: 'auto' }}>
+            <List>
+              {/* Native Asset */}
+              <ListItem 
+                sx={{ px: 1, borderRadius: 3, '&:hover': { bgcolor: 'surface' } }}
+                secondaryAction={
+                  <Box textAlign="right">
+                    <Typography fontWeight={700}>{balance}</Typography>
+                    <Typography variant="caption" color="text.muted">${portfolioUsd}</Typography>
+                  </Box>
+                }
+              >
+                <ListItemAvatar>
+                  <Avatar src={currentChain.logo} />
+                </ListItemAvatar>
+                <ListItemText primary={currentChain.symbol} secondary={currentChain.name} />
+              </ListItem>
+
+              {/* ERC20 Tokens */}
+              {tokenBalances.map((token) => (
+                <ListItem 
+                  key={token.address}
+                  sx={{ px: 1, borderRadius: 3, '&:hover': { bgcolor: 'surface' } }}
+                  secondaryAction={
+                    <Box textAlign="right">
+                      <Typography fontWeight={700}>{parseFloat(token.balance).toFixed(4)}</Typography>
+                      <Typography variant="caption" color="text.muted">$0.00</Typography>
+                    </Box>
+                  }
+                >
+                  <ListItemAvatar>
+                    <Avatar 
+                      src={token.logo} 
+                      sx={{ bgcolor: 'surface', color: 'text.primary', border: '1px solid', borderColor: 'border' }}
+                    >
+                      {token.symbol?.[0] || 'T'}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText primary={token.symbol} secondary={token.name} />
+                </ListItem>
+              ))}
+            </List>
+            <Button 
+              fullWidth 
+              variant="text" 
+              size="small" 
+              sx={{ mt: 2, color: 'primary.main', fontWeight: 700 }}
+              onClick={() => setAddTokenDialogOpen(true)}
+            >
+              + Add Token
+            </Button>
+          </Box>
+        ) : (
+          <Box sx={{ flex: 1, overflowY: 'auto' }}>
+            {transactions.length > 0 ? (
+              <List>
+                {transactions.map((tx) => (
+                  <ListItem key={tx.hash} sx={{ px: 1 }}>
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: tx.from.toLowerCase() === address?.toLowerCase() ? 'rgba(255, 0, 122, 0.1)' : 'rgba(76, 175, 80, 0.1)' }}>
+                        {tx.from.toLowerCase() === address?.toLowerCase() ? 
+                          <NorthEast sx={{ color: 'primary.main', fontSize: 20 }} /> : 
+                          <SouthWest sx={{ color: 'success.main', fontSize: 20 }} />}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText 
+                      primary={tx.from.toLowerCase() === address?.toLowerCase() ? 'Sent' : 'Received'} 
+                      secondary={new Date(parseInt(tx.timeStamp) * 1000).toLocaleDateString()} 
+                    />
+                    <Box textAlign="right">
+                      <Typography variant="body2" fontWeight={700}>
+                        {(parseFloat(tx.value) / 1e18).toFixed(4)} {currentChain.symbol}
+                      </Typography>
+                    </Box>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Box sx={{ mt: 4, textAlign: 'center', p: 4 }}>
+                <History sx={{ fontSize: 48, color: 'text.muted', opacity: 0.3, mb: 1 }} />
+                <Typography variant="body2" color="text.muted">No recent activity</Typography>
+              </Box>
+            )}
+          </Box>
+        )}
       </Paper>
 
       {/* Receive Dialog */}
@@ -324,27 +456,61 @@ export default function DashboardPage() {
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Send {currentChain.symbol}</DialogTitle>
         <DialogContent sx={{ py: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <TextField
-            fullWidth
-            label="Recipient Address"
-            placeholder="0x..."
-            variant="outlined"
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            InputProps={{ sx: { borderRadius: 3 } }}
-          />
-          <TextField
-            fullWidth
-            label="Amount"
-            placeholder="0.0"
-            variant="outlined"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            InputProps={{ 
-              sx: { borderRadius: 3 },
-              endAdornment: <InputAdornment position="end">{currentChain.symbol}</InputAdornment>
-            }}
-          />
+          <Box>
+            <Typography variant="caption" sx={{ color: 'text.muted', mb: 1, display: 'block' }}>RECIPIENT</Typography>
+            <TextField
+              fullWidth
+              placeholder="0x... or contact name"
+              variant="outlined"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              InputProps={{ sx: { borderRadius: 3 } }}
+            />
+            {Object.keys(addressBook).length > 0 && (
+              <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {Object.entries(addressBook).slice(0, 3).map(([name, addr]) => (
+                  <Chip 
+                    key={addr} 
+                    label={name} 
+                    size="small" 
+                    onClick={() => setRecipient(addr)}
+                    sx={{ bgcolor: 'surface', border: '1px solid', borderColor: 'border' }}
+                  />
+                ))}
+              </Box>
+            )}
+          </Box>
+
+          <Box>
+            <Typography variant="caption" sx={{ color: 'text.muted', mb: 1, display: 'block' }}>AMOUNT</Typography>
+            <TextField
+              fullWidth
+              placeholder="0.0"
+              variant="outlined"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              InputProps={{ 
+                sx: { borderRadius: 3 },
+                endAdornment: <InputAdornment position="end">{currentChain.symbol}</InputAdornment>
+              }}
+            />
+          </Box>
+
+          <Box>
+            <Typography variant="caption" sx={{ color: 'text.muted', mb: 1, display: 'block' }}>GAS PRIORITY</Typography>
+            <ToggleButtonGroup
+              fullWidth
+              value={gasPriority}
+              exclusive
+              onChange={(_, v) => v && setGasPriority(v)}
+              sx={{ bgcolor: 'surface', borderRadius: 3 }}
+            >
+              <ToggleButton value="slow" sx={{ py: 1 }}>Slow</ToggleButton>
+              <ToggleButton value="average" sx={{ py: 1 }}>Avg</ToggleButton>
+              <ToggleButton value="fast" sx={{ py: 1 }}>Fast</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
           {error && (
             <Typography variant="caption" color="error" sx={{ px: 1 }}>{error}</Typography>
           )}
@@ -359,6 +525,52 @@ export default function DashboardPage() {
             sx={{ borderRadius: 3, px: 4 }}
           >
             {txLoading ? <CircularProgress size={20} color="inherit" /> : 'Send Now'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Add Token Dialog */}
+      <Dialog 
+        open={addTokenDialogOpen} 
+        onClose={() => setAddTokenDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 4, width: '100%', maxWidth: 400 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Add Custom Token</DialogTitle>
+        <DialogContent sx={{ py: 2 }}>
+          <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255, 0, 122, 0.05)', borderRadius: 2, display: 'flex', gap: 2 }}>
+            <AccountBalanceWallet sx={{ color: 'primary.main' }} />
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Import tokens by entering their verified contract address.
+            </Typography>
+          </Box>
+          <TextField
+            fullWidth
+            label="Contract Address"
+            placeholder="0x..."
+            variant="outlined"
+            value={newTokenAddress}
+            onChange={(e) => setNewTokenAddress(e.target.value)}
+            InputProps={{ sx: { borderRadius: 3 } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setAddTokenDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => {
+              addToken({
+                address: newTokenAddress,
+                symbol: 'TOKEN',
+                name: 'Imported Token',
+                decimals: 18,
+                chainId: chainId
+              });
+              setAddTokenDialogOpen(false);
+              setNewTokenAddress('');
+            }}
+            disabled={!newTokenAddress.startsWith('0x')}
+            sx={{ borderRadius: 3, px: 4 }}
+          >
+            Import
           </Button>
         </DialogActions>
       </Dialog>

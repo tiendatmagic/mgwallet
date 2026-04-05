@@ -18,18 +18,18 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
   const baseKey = await crypto.subtle.importKey(
     'raw',
     enc.encode(password),
-    { name: KEY_ALGO },
+    { name: 'PBKDF2' },
     false,
     ['deriveBits', 'deriveKey']
   );
 
   return crypto.subtle.deriveKey(
     {
-      name: KEY_ALGO,
-      salt: salt,
+      name: 'PBKDF2',
+      salt,
       iterations: ITERATIONS,
-      hash: HASH_ALGO,
-    },
+      hash: 'SHA-256',
+    } as Pbkdf2Params,
     baseKey,
     { name: ENC_ALGO, length: 256 },
     false,
