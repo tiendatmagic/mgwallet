@@ -45,7 +45,7 @@ export default function MainPage() {
       <Box className="gradient-bg" sx={{ 
         width: 100, 
         height: 100, 
-        borderRadius: '24px', 
+        borderRadius: 2, 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
@@ -72,7 +72,7 @@ export default function MainPage() {
           color="primary"
           startIcon={<Add />}
           onClick={() => router.push('/onboarding/create')}
-          sx={{ borderRadius: '16px', py: 2, fontSize: '1.1rem' }}
+          sx={{ borderRadius: 1.5, py: 2, fontSize: '1.1rem' }}
         >
           Create New Wallet
         </Button>
