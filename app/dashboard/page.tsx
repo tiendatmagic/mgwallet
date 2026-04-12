@@ -29,7 +29,8 @@ import {
   Person,
   SwapHoriz,
   Edit,
-  Delete
+  Delete,
+  Add
 } from '@mui/icons-material';
 import { getChain, DEFAULT_CHAINS } from '@/lib/blockchain/chains';
 import { QRCodeSVG } from 'qrcode.react';
@@ -41,11 +42,10 @@ import { QRCodeSVG } from 'qrcode.react';
 export default function DashboardPage() {
   const router = useRouter();
   const { 
-    address, btcSegwitAddress, btcTaprootAddress, solanaAddress, bchAddress, ltcAddress,
-    nearAddress, suiAddress, aptosAddress, cardanoAddress, xrpAddress, tonAddress, tronAddress,
-    encryptedWallet, isLocked, chainId, balance, tokenBalances,
+    wallets, activeWalletId, chainId, balance, tokenBalances, isLocked,
     unlock, lock, updateBalance, setChainId, reset, prices, transactions,
-    addToken, addressBook, networks, removeNetwork, sendBitcoin, sendSolana, sendBitcoinCash, sendLitecoin
+    addToken, addressBook, networks, removeNetwork, sendBitcoin, sendSolana, sendBitcoinCash, sendLitecoin,
+    switchWallet, addWallet, theme
   } = useWalletStore();
 
   const [password, setPassword] = useState('');
@@ -65,12 +65,12 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'assets' | 'activity'>('assets');
 
   useEffect(() => {
-    if (!encryptedWallet || !address) {
+    if (wallets.length === 0) {
       router.replace('/');
     } else if (!isLocked) {
       updateBalance();
     }
-  }, [encryptedWallet, address, isLocked, router, updateBalance]);
+  }, [wallets.length, isLocked, router, updateBalance]);
 
   const { decryptedWallet } = useWalletStore();
 
@@ -179,17 +179,18 @@ export default function DashboardPage() {
   };
 
   const currentChain = getChain(chainId);
-  const displayAddress = currentChain.type === 'bitcoin' 
-    ? (currentChain.symbol === 'LTC' ? ltcAddress : (currentChain.bitcoinType === 'segwit' ? btcSegwitAddress : btcTaprootAddress))
-    : (currentChain.type === 'solana' ? solanaAddress : 
-      (currentChain.type === 'bitcoin-cash' ? bchAddress : 
-      (currentChain.symbol === 'NEAR' ? nearAddress :
-      (currentChain.symbol === 'SUI' ? suiAddress :
-      (currentChain.symbol === 'APT' ? aptosAddress :
-      (currentChain.symbol === 'ADA' ? cardanoAddress :
-      (currentChain.symbol === 'XRP' ? xrpAddress :
-      (currentChain.symbol === 'TON' ? tonAddress :
-      (currentChain.symbol === 'TRX' ? tronAddress : address)))))))));
+  const activeWallet = wallets.find(w => w.id === activeWalletId);
+  const displayAddress = activeWallet?.addresses[currentChain.type === 'evm' ? 'evm' : 
+    (currentChain.type === 'bitcoin' ? (currentChain.symbol === 'LTC' ? 'ltc' : (currentChain.bitcoinType === 'segwit' ? 'btcSegwit' : 'btcTaproot')) : 
+    (currentChain.type === 'solana' ? 'solana' : 
+    (currentChain.type === 'bitcoin-cash' ? 'bch' : 
+    (currentChain.symbol === 'NEAR' ? 'near' :
+    (currentChain.symbol === 'SUI' ? 'sui' :
+    (currentChain.symbol === 'APT' ? 'aptos' :
+    (currentChain.symbol === 'ADA' ? 'cardano' :
+    (currentChain.symbol === 'XRP' ? 'xrp' :
+    (currentChain.symbol === 'TON' ? 'ton' :
+    (currentChain.symbol === 'TRX' ? 'tron' : 'evm'))))))))))] as string;
 
   const cgId = CHAIN_PRICE_IDS[chainId];
   const nativePrice = prices[cgId] || 0;
@@ -258,150 +259,113 @@ export default function DashboardPage() {
       {/* Header */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'background.default' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 16 }}>MG</Avatar>
-          <Typography variant="subtitle1" fontWeight={700}>MG Wallet</Typography>
+          <IconButton onClick={() => setNetworkMenuAnchor(null)}>
+             <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: 14 }}>{activeWallet?.name[0]}</Avatar>
+          </IconButton>
+          <Box sx={{ cursor: 'pointer' }} onClick={(e) => setNetworkMenuAnchor(e.currentTarget)}>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ display: 'flex', alignItems: 'center' }}>
+              {activeWallet?.name} <ExpandMore sx={{ fontSize: 16 }} />
+            </Typography>
+            <Typography variant="caption" color="text.muted" sx={{ fontSize: '0.65rem' }}>
+              Multi-Coin Wallet
+            </Typography>
+          </Box>
         </Box>
         <Box>
-          <Button 
-            size="small" 
-            variant="outlined" 
-            endIcon={<ExpandMore />}
-            onClick={(e) => setNetworkMenuAnchor(e.currentTarget)}
-            sx={{ borderRadius: 1, borderColor: 'border', color: 'text.primary', bgcolor: 'surface' }}
-          >
-            {currentChain.name}
-          </Button>
-          <Menu
-            anchorEl={networkMenuAnchor}
-            open={Boolean(networkMenuAnchor)}
-            onClose={() => setNetworkMenuAnchor(null)}
-            PaperProps={{ sx: { borderRadius: 1.5, mt: 1, minWidth: 220 } }}
-          >
-            <Typography variant="overline" sx={{ px: 2, pt: 1, display: 'block', color: 'text.muted' }}>Network Selection</Typography>
-            {networks.map((chain: any) => (
-              <MenuItem 
-                key={chain.id} 
-                selected={chainId === chain.id}
-                sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  gap: 1,
-                  py: 1.5
-                }}
-              >
-                <Box 
-                  onClick={() => { setChainId(chain.id); setNetworkMenuAnchor(null); }}
-                  sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}
-                >
-                  <Avatar 
-                    src={chain.logo} 
-                    sx={{ 
-                      width: 24, 
-                      height: 24, 
-                      bgcolor: chain.logo ? 'transparent' : 'secondary.main',
-                      fontSize: 12
-                    }}
-                  >
-                    {!chain.logo && chain.symbol[0]}
-                  </Avatar>
-                  <ListItemText 
-                    primary={chain.name} 
-                    secondary={chain.rpc.length > 25 ? chain.rpc.substring(0, 22) + '...' : chain.rpc}
-                    secondaryTypographyProps={{ fontSize: '0.65rem' }} 
-                  />
-                </Box>
-                <Stack direction="row">
-                  <IconButton 
-                    size="small" 
-                    onClick={(e) => { e.stopPropagation(); router.push('/dashboard/networks'); setNetworkMenuAnchor(null); }}
-                  >
-                    <Edit sx={{ fontSize: 16 }} />
-                  </IconButton>
-                  <IconButton 
-                    size="small" 
-                    color="error" 
-                    onClick={(e) => { e.stopPropagation(); removeNetwork(chain.id); }}
-                    disabled={networks.length <= 1}
-                  >
-                    <Delete sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Stack>
-              </MenuItem>
-            ))}
-            <Divider sx={{ my: 1 }} />
-            <MenuItem onClick={() => { router.push('/dashboard/networks'); setNetworkMenuAnchor(null); }}>
-              <ListItemAvatar sx={{ minWidth: 36 }}>
-                <Avatar sx={{ width: 24, height: 24, bgcolor: 'transparent', border: '1px dashed', borderColor: 'primary.main' }}>
-                  <Settings sx={{ fontSize: 14, color: 'primary.main' }} />
+          <IconButton size="small" onClick={() => router.push('/dashboard/networks')} sx={{ bgcolor: 'surface', mr: 1 }}>
+            {(() => {
+              const defaultChain = DEFAULT_CHAINS[currentChain.id];
+              const logoSrc = defaultChain?.logo || currentChain.logo;
+              return (
+                <Avatar src={logoSrc} sx={{ width: 22, height: 22 }}>
+                  {currentChain.symbol[0]}
                 </Avatar>
-              </ListItemAvatar>
-              <ListItemText primary="Manage Networks" sx={{ color: 'primary.main' }} />
-            </MenuItem>
-          </Menu>
-          <IconButton size="small" onClick={() => router.push('/dashboard/settings')} sx={{ ml: 1 }}>
-            <Settings sx={{ fontSize: 20, color: 'text.muted' }} />
+              );
+            })()}
           </IconButton>
-          <IconButton size="small" onClick={lock} sx={{ ml: 1 }}>
-            <Logout sx={{ fontSize: 20, color: 'text.muted' }} />
+          <IconButton size="small" onClick={() => router.push('/dashboard/settings')}>
+            <Settings sx={{ fontSize: 22 }} />
           </IconButton>
         </Box>
       </Box>
 
+      {/* Wallet / Network Selector Menu */}
+      <Menu
+        anchorEl={networkMenuAnchor}
+        open={Boolean(networkMenuAnchor)}
+        onClose={() => setNetworkMenuAnchor(null)}
+        PaperProps={{ sx: { borderRadius: 3, mt: 1, minWidth: 280, p: 1 } }}
+      >
+        <Typography variant="overline" sx={{ px: 2, pt: 1, display: 'block', color: 'text.muted' }}>CHỌN VÍ</Typography>
+        {wallets.map((w) => (
+          <MenuItem 
+            key={w.id} 
+            selected={activeWalletId === w.id}
+            onClick={() => { switchWallet(w.id); setNetworkMenuAnchor(null); }}
+            sx={{ borderRadius: 2, my: 0.5 }}
+          >
+            <ListItemAvatar>
+              <Avatar sx={{ bgcolor: activeWalletId === w.id ? 'primary.main' : 'surface', color: activeWalletId === w.id ? 'white' : 'text.primary' }}>
+                <AccountBalanceWallet fontSize="small" />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText primary={w.name} secondary="Multi-Coin Wallet" />
+          </MenuItem>
+        ))}
+        <Divider sx={{ my: 1 }} />
+        <MenuItem onClick={() => { router.push('/onboarding'); setNetworkMenuAnchor(null); }} sx={{ borderRadius: 2 }}>
+           <ListItemText primary="+ Thêm ví mới" sx={{ color: 'primary.main', fontWeight: 600 }} />
+        </MenuItem>
+      </Menu>
+
       {/* Balance Card */}
-      <Box sx={{ p: 3, pt: 4, textAlign: 'center' }}>
-        <Typography variant="caption" sx={{ color: 'text.muted', letterSpacing: 1, fontWeight: 700 }}>
-          TOTAL BALANCE
-        </Typography>
-        <Typography variant="h2" sx={{ fontWeight: 800, mt: 1, mb: 0 }}>
-          {parseFloat(balance).toFixed(6)} <span style={{ fontSize: '1.5rem', fontWeight: 500 }}>{currentChain.symbol}</span>
-        </Typography>
-        <Typography variant="h6" sx={{ color: 'text.muted', fontWeight: 600, mb: 1 }}>
+      <Box sx={{ p: 3, pt: 1, textAlign: 'center' }}>
+        <Typography variant="h3" sx={{ fontWeight: 800, mt: 1, mb: 0 }}>
           ${portfolioUsd}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-          <Typography variant="body2" sx={{ color: 'text.muted', fontFamily: 'monospace' }}>
-            {displayAddress?.slice(0, 8)}...{displayAddress?.slice(-8)}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: 'text.muted', fontWeight: 600 }}>
+             {activeWallet?.name}
           </Typography>
-          <IconButton size="small" onClick={handleCopy}>
-            {copied ? <CheckCircle sx={{ fontSize: 16, color: 'success.main' }} /> : <CopyAll sx={{ fontSize: 16 }} />}
-          </IconButton>
+          <Chip 
+            label={`${displayAddress?.slice(0, 6)}...${displayAddress?.slice(-4)}`} 
+            size="small" 
+            onClick={handleCopy}
+            onDelete={handleCopy}
+            deleteIcon={copied ? <CheckCircle sx={{ fontSize: 14, color: 'success.main' }} /> : <CopyAll sx={{ fontSize: 14 }} />}
+            sx={{ height: 24, borderRadius: 10, bgcolor: 'surface', fontWeight: 600 }}
+          />
         </Box>
       </Box>
 
        {/* Actions */}
-      <Box sx={{ px: 3, py: 2, display: 'flex', justifyContent: 'space-around', gap: 2 }}>
+      <Box sx={{ px: 3, py: 1, display: 'flex', justifyContent: 'center', gap: 4 }}>
         <Stack alignItems="center" gap={1}>
-          <Box className="gradient-bg" sx={{ width: 56, height: 56, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 8px 16px rgba(255, 0, 122, 0.2)' }} onClick={() => setSendDialogOpen(true)}>
-            <Send sx={{ color: 'white' }} />
-          </Box>
-          <Typography variant="caption" fontWeight={600}>Send</Typography>
-        </Stack>
-        <Stack alignItems="center" gap={1}>
-          <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'border', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setReceiveDialogOpen(true)}>
-            <CallReceived sx={{ color: 'primary.main' }} />
-          </Box>
-          <Typography variant="caption" fontWeight={600}>Receive</Typography>
-        </Stack>
-        <Stack alignItems="center" gap={1}>
-          <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'border', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => router.push('/dashboard/swap')}>
-            <SwapHoriz sx={{ color: 'primary.main' }} />
-          </Box>
-          <Typography variant="caption" fontWeight={600}>Swap</Typography>
-        </Stack>
-        <Stack alignItems="center" gap={1}>
-          <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'border', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => updateBalance()}>
-            <Refresh sx={{ color: 'primary.main' }} />
-          </Box>
-          <Typography variant="caption" fontWeight={600}>Refresh</Typography>
-        </Stack>
-        <Stack alignItems="center" gap={1}>
-          <Box 
-            onClick={() => router.push('/dashboard/address-book')}
-            sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'border', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          <IconButton 
+            onClick={() => setSendDialogOpen(true)}
+            sx={{ width: 50, height: 50, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
           >
-            <Person sx={{ color: 'primary.main' }} />
-          </Box>
-          <Typography variant="caption" fontWeight={600}>Contacts</Typography>
+            <Send />
+          </IconButton>
+          <Typography variant="caption" fontWeight={700}>Gửi</Typography>
+        </Stack>
+        <Stack alignItems="center" gap={1}>
+          <IconButton 
+            onClick={() => setReceiveDialogOpen(true)}
+            sx={{ width: 50, height: 50, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
+          >
+            <CallReceived />
+          </IconButton>
+          <Typography variant="caption" fontWeight={700}>Nhận</Typography>
+        </Stack>
+        <Stack alignItems="center" gap={1}>
+          <IconButton 
+            onClick={() => router.push('/dashboard/swap')}
+            sx={{ width: 50, height: 50, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
+          >
+            <SwapHoriz />
+          </IconButton>
+          <Typography variant="caption" fontWeight={700}>Swap</Typography>
         </Stack>
       </Box>
 
@@ -444,41 +408,73 @@ export default function DashboardPage() {
                 sx={{ px: 1, borderRadius: 1.5, '&:hover': { bgcolor: 'surface' } }}
                 secondaryAction={
                   <Box textAlign="right">
-                    <Typography fontWeight={700}>{parseFloat(balance).toFixed(6)}</Typography>
-                    <Typography variant="caption" color="text.muted">${portfolioUsd}</Typography>
+                    <Typography fontWeight={700}>{parseFloat(balance).toFixed(4)} {currentChain.symbol}</Typography>
+                    <Typography variant="caption" color="text.muted">${nativeUsd.toFixed(2)}</Typography>
                   </Box>
                 }
               >
                 <ListItemAvatar>
-                  <Avatar src={currentChain.logo} />
+                  {(() => {
+                    const defaultChain = DEFAULT_CHAINS[currentChain.id];
+                    const logoSrc = defaultChain?.logo || currentChain.logo;
+                    return (
+                      <Avatar src={logoSrc}>
+                        {currentChain.symbol[0]}
+                      </Avatar>
+                    );
+                  })()}
                 </ListItemAvatar>
                 <ListItemText 
-                  primary={currentChain.symbol} 
-                  secondary={currentChain.bitcoinType ? `Bitcoin ${currentChain.bitcoinType === 'segwit' ? 'SegWit' : 'Taproot'}` : currentChain.name} 
+                  primary={currentChain.name} 
+                  secondary={`$${nativePrice.toLocaleString()}`} 
                 />
               </ListItem>
 
               {/* ERC20 Tokens */}
-              {tokenBalances.map((token) => (
+              {tokenBalances.filter(t => t.isVisible).map((token) => (
                 <ListItem 
                   key={token.address}
                   sx={{ px: 1, borderRadius: 3, '&:hover': { bgcolor: 'surface' } }}
                   secondaryAction={
                     <Box textAlign="right">
-                      <Typography fontWeight={700}>{parseFloat(token.balance).toFixed(4)}</Typography>
+                      <Typography fontWeight={700}>{parseFloat(token.balance).toFixed(4)} {token.symbol}</Typography>
                       <Typography variant="caption" color="text.muted">$0.00</Typography>
                     </Box>
                   }
                 >
                   <ListItemAvatar>
-                    <Avatar 
-                      src={token.logo} 
-                      sx={{ bgcolor: 'surface', color: 'text.primary', border: '1px solid', borderColor: 'border' }}
-                    >
-                      {token.symbol?.[0] || 'T'}
-                    </Avatar>
+                    <Box sx={{ position: 'relative' }}>
+                      <Avatar 
+                        src={token.logo} 
+                        sx={{ bgcolor: 'surface', color: 'text.primary' }}
+                      >
+                        {token.symbol?.[0] || 'T'}
+                      </Avatar>
+                      {(() => {
+                        const defaultChain = DEFAULT_CHAINS[currentChain.id];
+                        const logoSrc = defaultChain?.logo || currentChain.logo;
+                        return (
+                          <Avatar 
+                            src={logoSrc} 
+                            sx={{ 
+                              width: 14, 
+                              height: 14, 
+                              position: 'absolute', 
+                              bottom: 0, 
+                              right: 0, 
+                              border: '1.5px solid',
+                              borderColor: 'background.paper',
+                              bgcolor: 'secondary.main',
+                              fontSize: 8
+                            }}
+                          >
+                            {currentChain.symbol[0]}
+                          </Avatar>
+                        );
+                      })()}
+                    </Box>
                   </ListItemAvatar>
-                  <ListItemText primary={token.symbol} secondary={token.name} />
+                  <ListItemText primary={token.symbol} secondary={`$0.00`} />
                 </ListItem>
               ))}
             </List>
@@ -487,9 +483,9 @@ export default function DashboardPage() {
               variant="text" 
               size="small" 
               sx={{ mt: 2, color: 'primary.main', fontWeight: 700 }}
-              onClick={() => setAddTokenDialogOpen(true)}
+              onClick={() => router.push('/manage-tokens')}
             >
-              + Add Token
+              Quản lý token
             </Button>
           </Box>
         ) : (

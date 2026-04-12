@@ -8,7 +8,7 @@ import {
   List, ListItem, ListItemText, ListItemIcon, ListItemButton,
   Divider, Dialog, DialogTitle, DialogContent, 
   DialogActions, TextField, Button, CircularProgress, 
-  Alert, AlertTitle, Stack, ToggleButton, ToggleButtonGroup
+  Alert, AlertTitle, Stack, ToggleButton, ToggleButtonGroup, Switch
 } from '@mui/material';
 import { 
   ArrowBack, 
@@ -19,7 +19,8 @@ import {
   Visibility, 
   VisibilityOff,
   ContentCopy,
-  CheckCircle
+  CheckCircle,
+  AccountBalanceWallet
 } from '@mui/icons-material';
 import { decryptData } from '@/lib/crypto/encryption';
 import { WalletData, deriveBitcoinKeyPair, exportPrivateKeyWIF, deriveSolanaKeyPair, exportSolanaPrivateKey, deriveBitcoinCashKeyPair } from '@/lib/wallet/manager';
@@ -30,7 +31,7 @@ import { WalletData, deriveBitcoinKeyPair, exportPrivateKeyWIF, deriveSolanaKeyP
  */
 export default function SettingsPage() {
   const router = useRouter();
-  const { encryptedWallet, changePassword, isLocked, address } = useWalletStore();
+  const { theme, setTheme, wallets, changePassword, isLocked, activeWalletId, switchWallet } = useWalletStore();
 
   // Dialog States
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
@@ -55,12 +56,12 @@ export default function SettingsPage() {
 
   // Navigation check
   React.useEffect(() => {
-    if (!encryptedWallet || !address) {
+    if (wallets.length === 0) {
       router.replace('/');
     }
-  }, [encryptedWallet, address, router]);
+  }, [wallets.length, router]);
 
-  if (!encryptedWallet || !address) {
+  if (wallets.length === 0) {
     return null;
   }
 
@@ -77,8 +78,10 @@ export default function SettingsPage() {
     setLoading(true);
     setError('');
     try {
-      // Try to decrypt with current password to verify
-      const decryptedData = await decryptData(encryptedWallet, password);
+      const activeWallet = wallets.find(w => w.id === activeWalletId);
+      if (!activeWallet) throw new Error('No active wallet');
+      
+      const decryptedData = await decryptData(activeWallet.encryptedMnemonic, password);
       const walletData: WalletData = JSON.parse(decryptedData);
       setRevealWalletData(walletData);
       
@@ -197,7 +200,36 @@ export default function SettingsPage() {
 
       {/* Settings List */}
       <Box sx={{ p: 2, flex: 1 }}>
-        <Typography variant="overline" sx={{ px: 1, color: 'text.muted', fontWeight: 700 }}>Security</Typography>
+        <Typography variant="overline" sx={{ px: 1, color: 'text.muted', fontWeight: 700 }}>Chung</Typography>
+        <Paper sx={{ borderRadius: 3, mt: 1, mb: 3, overflow: 'hidden' }}>
+          <List disablePadding>
+            <ListItem disablePadding>
+              <ListItemButton onClick={() => router.push('/onboarding')} sx={{ py: 1.5 }}>
+                <ListItemIcon>
+                   <AccountBalanceWallet color="primary" />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Ví" 
+                  secondary={wallets.find(w => w.id === activeWalletId)?.name || 'Chưa chọn'} 
+                />
+                <ChevronRight sx={{ color: 'text.muted' }} />
+              </ListItemButton>
+            </ListItem>
+            <Divider variant="middle" />
+            <ListItem sx={{ py: 1.5 }}>
+               <ListItemIcon>
+                   <Visibility color="primary" />
+                </ListItemIcon>
+                <ListItemText primary="Chế độ tối" />
+                <Switch 
+                  checked={theme === 'dark'} 
+                  onChange={(e) => setTheme(e.target.checked ? 'dark' : 'light')} 
+                />
+            </ListItem>
+          </List>
+        </Paper>
+
+        <Typography variant="overline" sx={{ px: 1, color: 'text.muted', fontWeight: 700 }}>Bảo mật</Typography>
         <Paper sx={{ borderRadius: 3, mt: 1, overflow: 'hidden' }}>
           <List disablePadding>
             <ListItem disablePadding sx={{ py: 0.5 }}>
@@ -209,8 +241,8 @@ export default function SettingsPage() {
                   <Lock color="primary" />
                 </ListItemIcon>
                 <ListItemText 
-                  primary="Change Password" 
-                  secondary="Update your wallet's local security" 
+                  primary="Thay đổi mật khẩu" 
+                  secondary="Cập nhật bảo mật cục bộ của bạn" 
                 />
                 <ChevronRight sx={{ color: 'text.muted' }} />
               </ListItemButton>
@@ -227,8 +259,8 @@ export default function SettingsPage() {
                   <Description color="primary" />
                 </ListItemIcon>
                 <ListItemText 
-                  primary="View Recovery Phrase" 
-                  secondary="Access your 12 or 24-word seed phrase" 
+                  primary="Xem Cụm từ khôi phục" 
+                  secondary="Truy cập cụm từ 12 hoặc 24 từ của bạn" 
                 />
                 <ChevronRight sx={{ color: 'text.muted' }} />
               </ListItemButton>
@@ -245,8 +277,8 @@ export default function SettingsPage() {
                   <Key color="primary" />
                 </ListItemIcon>
                 <ListItemText 
-                  primary="View Private Key" 
-                  secondary="View the primary EVM private key" 
+                  primary="Xem Khóa cá nhân" 
+                  secondary="Xem các khóa cá nhân trên các chuỗi" 
                 />
                 <ChevronRight sx={{ color: 'text.muted' }} />
               </ListItemButton>

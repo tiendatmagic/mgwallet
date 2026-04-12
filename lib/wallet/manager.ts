@@ -13,6 +13,11 @@ const bip32 = BIP32Factory(ecc);
 const ECPair = ECPairFactory(ecc);
 bitcoin.initEccLib(ecc);
 
+// Fix for bitcore-lib-cash multi-instance error
+if ((bitcore as any).versionGuard) {
+  (bitcore as any).versionGuard = () => {};
+}
+
 export const LITECOIN_NETWORK: bitcoin.Network = {
   messagePrefix: '\x19Litecoin Signed Message:\n',
   bech32: 'ltc',
@@ -324,7 +329,57 @@ export interface WalletData {
   xrpAddress?: string;
   tonAddress?: string;
   tronAddress?: string;
+  solanaAddress?: string;
   mnemonic?: string;
   privateKey: string;
   type: 'mnemonic' | 'private-key';
+}
+
+/**
+ * Derives all addresses for a given mnemonic or private key
+ */
+export async function deriveAllAddresses(data: string, type: 'mnemonic' | 'private-key'): Promise<Partial<WalletData>> {
+  if (type === 'mnemonic') {
+    const evmWallet = deriveWalletFromMnemonic(data);
+    const btcSegwit = deriveBitcoinAddress(data, 'segwit');
+    const btcTaproot = deriveBitcoinAddress(data, 'taproot');
+    const solana = deriveSolanaAddress(data);
+    const bch = deriveBitcoinCashAddress(data);
+    const ltc = deriveLitecoinAddress(data);
+    
+    // Async derivations
+    const near = await deriveNearAddress(data);
+    const sui = await deriveSuiAddress(data);
+    const aptos = await deriveAptosAddress(data);
+    const cardano = await deriveCardanoAddress(data);
+    const xrp = await deriveRippleAddress(data);
+    const ton = await deriveTonAddress(data);
+    const tron = await deriveTronAddress(data);
+
+    return {
+      type: 'mnemonic',
+      address: evmWallet.address,
+      privateKey: evmWallet.privateKey,
+      mnemonic: data,
+      btcSegwitAddress: btcSegwit,
+      btcTaprootAddress: btcTaproot,
+      solanaAddress: solana,
+      bchAddress: bch,
+      ltcAddress: ltc,
+      nearAddress: near,
+      suiAddress: sui,
+      aptosAddress: aptos,
+      cardanoAddress: cardano,
+      xrpAddress: xrp,
+      tonAddress: ton,
+      tronAddress: tron,
+    };
+  } else {
+    const wallet = deriveWalletFromPrivateKey(data);
+    return {
+      type: 'private-key',
+      address: wallet.address,
+      privateKey: wallet.privateKey,
+    };
+  }
 }

@@ -12,16 +12,16 @@ import { AccountBalanceWallet, Add, ArrowForward, Restore } from '@mui/icons-mat
  */
 export default function MainPage() {
   const router = useRouter();
-  const { encryptedWallet, address } = useWalletStore();
+  const { wallets } = useWalletStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (encryptedWallet && address) {
+    if (wallets.length > 0) {
       router.push('/dashboard');
     } else {
       setLoading(false);
     }
-  }, [encryptedWallet, address, router]);
+  }, [wallets, router]);
 
   if (loading) {
     return (

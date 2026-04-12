@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, Box } from '@mui/material';
 import { useWalletStore } from '@/store/useWalletStore';
 
 /**
@@ -9,22 +9,30 @@ import { useWalletStore } from '@/store/useWalletStore';
  * Handles MUI Theme (Dark/Light) and Global Reset
  */
 export function Providers({ children }: { children: React.ReactNode }) {
-  // We could use a theme setting from the store if needed, 
-  // but let's stick to system default for now or a custom MG theme.
+  const storeTheme = useWalletStore((state) => state.theme);
+  const [mounted, setMounted] = React.useState(false);
   
+  React.useEffect(() => {
+    setMounted(true);
+    document.documentElement.setAttribute('data-theme', storeTheme);
+  }, [storeTheme]);
+
   const theme = useMemo(() => createTheme({
     palette: {
-      mode: 'light', // Force light for now or handle dynamic switching
+      mode: storeTheme,
       primary: {
-        main: '#FF007A',
+        main: '#3375BB', // Trust Blue
       },
       secondary: {
-        main: '#FF8A00',
+        main: '#00BD84', // Success Green
       },
       background: {
-        default: '#FFFFFF',
-        paper: '#F8F9FA',
+        default: storeTheme === 'dark' ? '#111111' : '#FFFFFF',
+        paper: storeTheme === 'dark' ? '#1C1C1E' : '#F5F7F9',
       },
+      text: {
+        primary: storeTheme === 'dark' ? '#F5F7FA' : '#1A1C1E',
+      }
     },
     typography: {
       fontFamily: 'inherit',
@@ -34,21 +42,33 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
     },
     shape: {
-      borderRadius: 12,
+      borderRadius: 16,
     },
     components: {
       MuiButton: {
         styleOverrides: {
           root: {
             padding: '12px 24px',
+            borderRadius: 100, // Rounded buttons like Trust
           }
         },
         defaultProps: {
           disableElevation: true,
         }
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: 'none',
+          }
+        }
       }
     }
-  }), []);
+  }), [storeTheme]);
+
+  if (!mounted) {
+    return <Box sx={{ flex: 1, bgcolor: storeTheme === 'dark' ? '#111111' : '#FFFFFF' }} />;
+  }
 
   return (
     <ThemeProvider theme={theme}>

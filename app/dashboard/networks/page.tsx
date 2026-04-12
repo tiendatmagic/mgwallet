@@ -130,9 +130,15 @@ export default function ManageNetworksPage() {
                   sx={{ py: 1.5 }}
                 >
                   <ListItemAvatar>
-                    <Avatar src={chain.logo} sx={{ bgcolor: chain.logo ? 'transparent' : 'secondary.main', width: 36, height: 36 }}>
-                      {!chain.logo && chain.symbol[0]}
-                    </Avatar>
+                    {(() => {
+                      const defaultChain = DEFAULT_CHAINS[chain.id];
+                      const logoSrc = (isDefault(chain.id) && defaultChain?.logo) || chain.logo;
+                      return (
+                        <Avatar src={logoSrc} sx={{ bgcolor: 'secondary.main', width: 36, height: 36 }}>
+                          {chain.symbol[0]}
+                        </Avatar>
+                      );
+                    })()}
                   </ListItemAvatar>
                   <ListItemText 
                     primary={

@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box, Typography, Button, IconButton, TextField, InputAdornment, LinearProgress, Paper } from '@mui/material';
-import { ArrowBack, Visibility, VisibilityOff, Lock, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
+import { ArrowBack, Visibility, VisibilityOff, Lock, CheckCircle, Error as ErrorIcon, Add } from '@mui/icons-material';
 import { useWalletStore } from '@/store/useWalletStore';
 import { encryptData } from '@/lib/crypto/encryption';
-import { deriveWalletFromMnemonic, deriveWalletFromPrivateKey, WalletData } from '@/lib/wallet/manager';
+import { deriveAllAddresses, WalletData } from '@/lib/wallet/manager';
 
 /**
  * MG Wallet - Unified Password Setting
@@ -14,7 +14,7 @@ import { deriveWalletFromMnemonic, deriveWalletFromPrivateKey, WalletData } from
  */
 export default function UniversalPasswordPage() {
   const router = useRouter();
-  const setWallet = useWalletStore(state => state.setWallet);
+  const addWallet = useWalletStore(state => state.addWallet);
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,30 +41,27 @@ export default function UniversalPasswordPage() {
 
     setLoading(true);
     try {
-      let address = '';
-      let privateKey = '';
-      let mnemonic = undefined;
-
-      if (walletInfo.type === 'mnemonic') {
-        const wallet = deriveWalletFromMnemonic(walletInfo.data);
-        address = wallet.address;
-        privateKey = wallet.privateKey;
-        mnemonic = walletInfo.data;
-      } else {
-        const wallet = deriveWalletFromPrivateKey(walletInfo.data);
-        address = wallet.address;
-        privateKey = wallet.privateKey;
-      }
-
-      const walletData: WalletData = {
-        type: walletInfo.type,
-        address,
-        privateKey,
-        mnemonic,
+      const walletData = await deriveAllAddresses(walletInfo.data, walletInfo.type);
+      
+      // Explicitly map WalletData to WalletAccount['addresses'] structure
+      const addresses = {
+        evm: walletData.address || null,
+        btcSegwit: walletData.btcSegwitAddress || null,
+        btcTaproot: walletData.btcTaprootAddress || null,
+        solana: walletData.solanaAddress || null,
+        bch: walletData.bchAddress || null,
+        ltc: walletData.ltcAddress || null,
+        near: walletData.nearAddress || null,
+        sui: walletData.suiAddress || null,
+        aptos: walletData.aptosAddress || null,
+        cardano: walletData.cardanoAddress || null,
+        xrp: walletData.xrpAddress || null,
+        ton: walletData.tonAddress || null,
+        tron: walletData.tronAddress || null,
       };
 
       const encrypted = await encryptData(JSON.stringify(walletData), password);
-      setWallet(encrypted, address);
+      addWallet(`Ví chính ${useWalletStore.getState().wallets.length + 1}`, encrypted, addresses);
 
       sessionStorage.removeItem('temp_mnemonic');
       sessionStorage.removeItem('temp_private_key');

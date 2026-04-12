@@ -10,9 +10,19 @@ export const CHAIN_PRICE_IDS: Record<number, string> = {
   1: 'ethereum',
   56: 'binancecoin',
   137: 'matic-network',
-  42161: 'ethereum', // Arbitrum uses ETH
-  [-1]: 'bitcoin',
-  [-2]: 'bitcoin',
+  42161: 'ethereum',
+  [-1]: 'bitcoin', // BTC Segwit
+  [-2]: 'bitcoin', // BTC Taproot
+  [-3]: 'solana',
+  [-4]: 'bitcoin-cash',
+  [-5]: 'litecoin',
+  [-20]: 'near',
+  [-21]: 'sui',
+  [-22]: 'aptos',
+  [-23]: 'cardano',
+  [-24]: 'ripple',
+  [-25]: 'the-open-network',
+  [-26]: 'tron',
 };
 
 let priceCache: { data: Record<string, number>, timestamp: number } | null = null;

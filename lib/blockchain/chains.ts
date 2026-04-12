@@ -137,7 +137,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     rpc: 'https://rpc.mainnet.near.org',
     explorer: 'https://nearblocks.io',
     symbol: 'NEAR',
-    logo: 'https://cryptologos.cc/logos/near-protocol-near-logo.png',
+    logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/near/info/logo.png',
     color: '#000000',
     type: 'evm', // Custom handling
   },
@@ -147,7 +147,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     rpc: 'https://fullnode.mainnet.sui.io:443',
     explorer: 'https://suiexplorer.com',
     symbol: 'SUI',
-    logo: 'https://cryptologos.cc/logos/sui-sui-logo.png',
+    logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/sui/info/logo.png',
     color: '#6FBCF0',
     type: 'evm', // Custom handling
   },
@@ -157,7 +157,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     rpc: 'https://fullnode.mainnet.aptoslabs.com/v1',
     explorer: 'https://explorer.aptoslabs.com',
     symbol: 'APT',
-    logo: 'https://cryptologos.cc/logos/aptos-apt-logo.png',
+    logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/aptos/info/logo.png',
     color: '#2DD4BF',
     type: 'evm', // Custom handling
   },
@@ -167,7 +167,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     rpc: 'https://cardano-mainnet.blockfrost.io/api/v0', // Needs key
     explorer: 'https://cardanoscan.io',
     symbol: 'ADA',
-    logo: 'https://cryptologos.cc/logos/cardano-ada-logo.png',
+    logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/cardano/info/logo.png',
     color: '#0033AD',
     type: 'evm', // Custom handling
   },
@@ -177,7 +177,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     rpc: 'https://xrplcluster.com',
     explorer: 'https://xrpscan.com',
     symbol: 'XRP',
-    logo: 'https://cryptologos.cc/logos/xrp-xrp-logo.png',
+    logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ripple/info/logo.png',
     color: '#23292F',
     type: 'evm', // Custom handling
   },
@@ -187,7 +187,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     rpc: 'https://toncenter.com/api/v2/jsonRPC',
     explorer: 'https://tonscan.org',
     symbol: 'TON',
-    logo: 'https://cryptologos.cc/logos/toncoin-ton-logo.png',
+    logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ton/info/logo.png',
     color: '#0088CC',
     type: 'evm', // Custom handling
   },
@@ -197,7 +197,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     rpc: 'https://api.trongrid.io',
     explorer: 'https://tronscan.org',
     symbol: 'TRX',
-    logo: 'https://cryptologos.cc/logos/tron-trx-logo.png',
+    logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
     color: '#FF0013',
     type: 'evm', // Custom handling
   },

@@ -11,25 +11,37 @@ import { getTransactionHistory, Transaction } from '@/lib/blockchain/explorer';
 interface TokenBalance extends Token {
   balance: string;
   usdValue: number;
+  isVisible: boolean;
+}
+
+interface WalletAccount {
+  id: string;
+  name: string;
+  encryptedMnemonic: string;
+  addresses: {
+    evm: string | null;
+    btcSegwit: string | null;
+    btcTaproot: string | null;
+    solana: string | null;
+    bch: string | null;
+    ltc: string | null;
+    near: string | null;
+    sui: string | null;
+    aptos: string | null;
+    cardano: string | null;
+    xrp: string | null;
+    ton: string | null;
+    tron: string | null;
+  };
 }
 
 interface WalletStore {
-  // Persistence
-  encryptedWallet: string | null;
-  address: string | null; // Primary EVM address
-  btcSegwitAddress: string | null;
-  btcTaprootAddress: string | null;
-  solanaAddress: string | null;
-  bchAddress: string | null;
-  ltcAddress: string | null;
-  nearAddress: string | null;
-  suiAddress: string | null;
-  aptosAddress: string | null;
-  cardanoAddress: string | null;
-  xrpAddress: string | null;
-  tonAddress: string | null;
-  tronAddress: string | null;
+  // Persistence V5 (Multi-wallet)
+  wallets: WalletAccount[];
+  activeWalletId: string | null;
   chainId: number;
+  theme: 'light' | 'dark';
+  hiddenTokens: string[]; // chainId:tokenAddress
   
   // In-memory (not persisted)
   decryptedWallet: Wallet | HDNodeWallet | null;
@@ -46,9 +58,13 @@ interface WalletStore {
   
   // Actions
   setChainId: (chainId: number) => void;
+  setTheme: (theme: 'light' | 'dark') => void;
+  toggleTokenVisibility: (chainId: number, tokenAddress: string) => void;
   lock: () => void;
-  unlock: (password: string) => Promise<boolean>;
-  setWallet: (encryptedWallet: string, address: string, otherAddresses?: Partial<WalletStore>) => void;
+  unlock: (password: string, walletId?: string) => Promise<boolean>;
+  addWallet: (name: string, encryptedMnemonic: string, addresses: WalletAccount['addresses']) => void;
+  switchWallet: (walletId: string) => void;
+  removeWallet: (walletId: string) => void;
   updateBalance: () => Promise<void>;
   updatePrices: () => Promise<void>;
   updateTransactions: () => Promise<void>;
@@ -69,21 +85,11 @@ interface WalletStore {
 export const useWalletStore = create<WalletStore>()(
   persist(
     (set, get) => ({
-      encryptedWallet: null,
-      address: null,
-      btcSegwitAddress: null,
-      btcTaprootAddress: null,
-      solanaAddress: null,
-      bchAddress: null,
-      ltcAddress: null,
-      nearAddress: null,
-      suiAddress: null,
-      aptosAddress: null,
-      cardanoAddress: null,
-      xrpAddress: null,
-      tonAddress: null,
-      tronAddress: null,
+      wallets: [],
+      activeWalletId: null,
       chainId: DEFAULT_CHAIN_ID,
+      theme: 'light',
+      hiddenTokens: [],
       decryptedWallet: null,
       balance: '0.00',
       tokenBalances: [],
@@ -101,57 +107,44 @@ export const useWalletStore = create<WalletStore>()(
         get().updatePrices();
       },
 
+      setTheme: (theme: 'light' | 'dark') => {
+        set({ theme });
+        document.documentElement.setAttribute('data-theme', theme);
+      },
+
+      toggleTokenVisibility: (chainId, tokenAddress) => {
+        const key = `${chainId}:${tokenAddress}`;
+        set((state) => ({
+          hiddenTokens: state.hiddenTokens.includes(key)
+            ? state.hiddenTokens.filter((k) => k !== key)
+            : [...state.hiddenTokens, key],
+        }));
+        get().updateBalance();
+      },
+
       lock: () => {
         set({ decryptedWallet: null, isLocked: true });
       },
 
-      unlock: async (password: string) => {
-        const { encryptedWallet } = get();
-        if (!encryptedWallet) return false;
+      unlock: async (password: string, walletId?: string) => {
+        const id = walletId || get().activeWalletId;
+        const walletAccount = get().wallets.find(w => w.id === id);
+        if (!walletAccount) return false;
 
         try {
-          const decryptedData = await decryptData(encryptedWallet, password);
+          const decryptedData = await decryptData(walletAccount.encryptedMnemonic, password);
           const walletData: WalletData = JSON.parse(decryptedData);
           
           let wallet: Wallet | HDNodeWallet;
           if (walletData.type === 'mnemonic' && walletData.mnemonic) {
-            const { deriveWalletFromMnemonic, deriveBitcoinAddress, deriveSolanaAddress } = await import('@/lib/wallet/manager');
+            const { deriveWalletFromMnemonic } = await import('@/lib/wallet/manager');
             wallet = deriveWalletFromMnemonic(walletData.mnemonic);
-            
-            const segwit = deriveBitcoinAddress(walletData.mnemonic, 'segwit');
-            const taproot = deriveBitcoinAddress(walletData.mnemonic, 'taproot');
-            const solana = deriveSolanaAddress(walletData.mnemonic);
-            const mg = await import('@/lib/wallet/manager');
-            const bch = mg.deriveBitcoinCashAddress(walletData.mnemonic);
-            const ltc = mg.deriveLitecoinAddress(walletData.mnemonic);
-            const near = await mg.deriveNearAddress(walletData.mnemonic);
-            const sui = await mg.deriveSuiAddress(walletData.mnemonic);
-            const aptos = await mg.deriveAptosAddress(walletData.mnemonic);
-            const cardano = await mg.deriveCardanoAddress(walletData.mnemonic);
-            const xrp = await mg.deriveRippleAddress(walletData.mnemonic);
-            const ton = await mg.deriveTonAddress(walletData.mnemonic);
-            const tron = await mg.deriveTronAddress(walletData.mnemonic);
-
-            set({ 
-              btcSegwitAddress: segwit, 
-              btcTaprootAddress: taproot, 
-              solanaAddress: solana, 
-              bchAddress: bch, 
-              ltcAddress: ltc,
-              nearAddress: near,
-              suiAddress: sui,
-              aptosAddress: aptos,
-              cardanoAddress: cardano,
-              xrpAddress: xrp,
-              tonAddress: ton,
-              tronAddress: tron
-            });
           } else {
             const { deriveWalletFromPrivateKey } = await import('@/lib/wallet/manager');
             wallet = deriveWalletFromPrivateKey(walletData.privateKey);
           }
 
-          set({ decryptedWallet: wallet, isLocked: false });
+          set({ activeWalletId: id, decryptedWallet: wallet, isLocked: false });
           get().updateBalance();
           get().updateTransactions();
           get().updatePrices();
@@ -162,26 +155,49 @@ export const useWalletStore = create<WalletStore>()(
         }
       },
 
-      setWallet: (encryptedWallet, address, otherAddresses = {}) => {
-        set({ 
-          encryptedWallet, 
-          address, 
-          ...otherAddresses,
-          isLocked: true 
+      addWallet: (name, encryptedMnemonic, addresses) => {
+        const newWallet: WalletAccount = {
+          id: Math.random().toString(36).substring(2, 11),
+          name,
+          encryptedMnemonic,
+          addresses
+        };
+        set((state) => ({
+          wallets: [...state.wallets, newWallet],
+          activeWalletId: state.activeWalletId || newWallet.id
+        }));
+      },
+
+      switchWallet: (walletId) => {
+        set({ activeWalletId: walletId, decryptedWallet: null, isLocked: true });
+      },
+
+      removeWallet: (walletId) => {
+        set((state) => {
+          const newWallets = state.wallets.filter(w => w.id !== walletId);
+          return {
+            wallets: newWallets,
+            activeWalletId: state.activeWalletId === walletId ? (newWallets[0]?.id || null) : state.activeWalletId,
+            decryptedWallet: state.activeWalletId === walletId ? null : state.decryptedWallet,
+            isLocked: state.activeWalletId === walletId ? true : state.isLocked
+          };
         });
       },
 
       updateBalance: async () => {
-        const { address, btcSegwitAddress, btcTaprootAddress, solanaAddress, bchAddress, ltcAddress, chainId, customTokens, networks } = get();
-        if (!address) return;
+        const { activeWalletId, wallets, chainId, customTokens, networks, hiddenTokens } = get();
+        const activeWallet = wallets.find(w => w.id === activeWalletId);
+        if (!activeWallet) return;
+
+        const { evm, btcSegwit, btcTaproot, solana, bch, ltc } = activeWallet.addresses;
+        if (!evm) return;
 
         try {
           const chain = networks.find(n => n.id === chainId) || getChain(chainId);
           
           if (chain.type === 'bitcoin') {
-            const btcAddress = chain.bitcoinType === 'segwit' ? btcSegwitAddress : btcTaprootAddress;
-            // For Litecoin, use ltcAddress, otherwise use BTC addresses
-            const targetAddress = chain.id === (await import('@/lib/blockchain/chains')).LTC_CHAIN_ID ? ltcAddress : btcAddress;
+            const btcAddress = chain.bitcoinType === 'segwit' ? btcSegwit : btcTaproot;
+            const targetAddress = chain.id === (await import('@/lib/blockchain/chains')).LTC_CHAIN_ID ? ltc : btcAddress;
             
             if (!targetAddress) return;
 
@@ -195,17 +211,17 @@ export const useWalletStore = create<WalletStore>()(
           }
 
           if (chain.type === 'solana') {
-            if (!solanaAddress) return;
+            if (!solana) return;
             const { fetchSolanaBalance } = await import('@/lib/blockchain/solana');
-            const solBalance = await fetchSolanaBalance(chain.rpc, solanaAddress);
+            const solBalance = await fetchSolanaBalance(chain.rpc, solana);
             set({ balance: solBalance, tokenBalances: [] });
             return;
           }
 
           if (chain.type === 'bitcoin-cash') {
-            if (!bchAddress) return;
+            if (!bch) return;
             const { fetchBchBalance } = await import('@/lib/blockchain/bitcoincash');
-            const bchBal = await fetchBchBalance(bchAddress);
+            const bchBal = await fetchBchBalance(bch);
             set({ balance: bchBal, tokenBalances: [] });
             return;
           }
@@ -213,7 +229,6 @@ export const useWalletStore = create<WalletStore>()(
           const { NEAR_CHAIN_ID, SUI_CHAIN_ID, APTOS_CHAIN_ID, CARDANO_CHAIN_ID, XRP_CHAIN_ID, TON_CHAIN_ID, TRX_CHAIN_ID } = await import('@/lib/blockchain/chains');
           
           if (chainId === NEAR_CHAIN_ID || chainId === SUI_CHAIN_ID || chainId === APTOS_CHAIN_ID || chainId === CARDANO_CHAIN_ID || chainId === XRP_CHAIN_ID || chainId === TON_CHAIN_ID || chainId === TRX_CHAIN_ID) {
-            // Placeholder for new chains balance fetching
             set({ balance: '0.00', tokenBalances: [] });
             return;
           }
@@ -224,7 +239,7 @@ export const useWalletStore = create<WalletStore>()(
             { staticNetwork: true }
           );
           
-          const balanceWei = await provider.getBalance(address);
+          const balanceWei = await provider.getBalance(evm);
           const nativeBal = formatEther(balanceWei);
           
           const tokensToFetch = [
@@ -234,12 +249,12 @@ export const useWalletStore = create<WalletStore>()(
 
           const tokenBals: TokenBalance[] = await Promise.all(
             tokensToFetch.map(async (token) => {
+              const isVisible = !hiddenTokens.includes(`${chainId}:${token.address}`);
               try {
-                const { balance } = await fetchTokenBalance(chain.rpc, token.address, address, chainId);
-                return { ...token, balance, usdValue: 0 };
+                const { balance } = await fetchTokenBalance(chain.rpc, token.address, evm, chainId);
+                return { ...token, balance, usdValue: 0, isVisible };
               } catch (e) {
-                console.warn(`Failed to fetch balance for ${token.symbol}:`, e);
-                return { ...token, balance: '0', usdValue: 0 };
+                return { ...token, balance: '0', usdValue: 0, isVisible };
               }
             })
           );
@@ -259,13 +274,16 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       updateTransactions: async () => {
-        const { address, btcSegwitAddress, btcTaprootAddress, chainId } = get();
-        if (!address) return;
+        const { activeWalletId, wallets, chainId } = get();
+        const activeWallet = wallets.find(w => w.id === activeWalletId);
+        if (!activeWallet) return;
+        const { evm, btcSegwit, btcTaproot } = activeWallet.addresses;
+        if (!evm) return;
 
         try {
           const chain = getChain(chainId);
           if (chain.type === 'bitcoin') {
-            const btcAddress = chain.bitcoinType === 'segwit' ? btcSegwitAddress : btcTaprootAddress;
+            const btcAddress = chain.bitcoinType === 'segwit' ? btcSegwit : btcTaproot;
             if (!btcAddress) return;
             
             const response = await fetch(`https://mempool.space/api/address/${btcAddress}/txs`);
@@ -293,7 +311,7 @@ export const useWalletStore = create<WalletStore>()(
           }
 
           if (DEFAULT_CHAINS[chainId]) {
-            const txs = await getTransactionHistory(address, chainId);
+            const txs = await getTransactionHistory(evm, chainId);
             set({ transactions: txs });
           }
         } catch (error) {
@@ -337,15 +355,19 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       changePassword: async (oldPassword, newPassword) => {
-        const { encryptedWallet } = get();
-        if (!encryptedWallet) return false;
+        const { wallets } = get();
+        if (wallets.length === 0) return false;
 
         try {
           const { encryptData } = await import('@/lib/crypto/encryption');
-          const decryptedData = await decryptData(encryptedWallet, oldPassword);
-          const newEncryptedWallet = await encryptData(decryptedData, newPassword);
           
-          set({ encryptedWallet: newEncryptedWallet });
+          const updatedWallets = await Promise.all(wallets.map(async (w) => {
+            const decryptedData = await decryptData(w.encryptedMnemonic, oldPassword);
+            const newEncryptedMnemonic = await encryptData(decryptedData, newPassword);
+            return { ...w, encryptedMnemonic: newEncryptedMnemonic };
+          }));
+          
+          set({ wallets: updatedWallets });
           return true;
         } catch (error) {
           console.error('Password change failed:', error);
@@ -354,9 +376,10 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       sendBitcoin: async (recipient, amountBtc, mnemonic, feePriority = 'average') => {
-        const { btcSegwitAddress, btcTaprootAddress, chainId } = get();
+        const { activeWalletId, wallets, chainId } = get();
+        const activeWallet = wallets.find(w => w.id === activeWalletId);
         const chain = getChain(chainId);
-        const sourceAddress = chain.bitcoinType === 'segwit' ? btcSegwitAddress : btcTaprootAddress;
+        const sourceAddress = chain.bitcoinType === 'segwit' ? activeWallet?.addresses.btcSegwit : activeWallet?.addresses.btcTaproot;
         
         if (!sourceAddress) throw new Error('Bitcoin address not initialized');
 
@@ -468,13 +491,10 @@ export const useWalletStore = create<WalletStore>()(
 
       reset: () => {
         set({
-          encryptedWallet: null,
-          address: null,
-          btcSegwitAddress: null,
-          btcTaprootAddress: null,
-          solanaAddress: null,
-          bchAddress: null,
-          ltcAddress: null,
+          wallets: [],
+          activeWalletId: null,
+          theme: 'light',
+          hiddenTokens: [],
           decryptedWallet: null,
           balance: '0.00',
           tokenBalances: [],
@@ -489,16 +509,17 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       sendBitcoinCash: async (recipient, amountBch, mnemonic) => {
-        const { chainId, networks, bchAddress } = get();
+        const { activeWalletId, wallets, chainId, networks } = get();
+        const activeWallet = wallets.find(w => w.id === activeWalletId);
         const chain = networks.find(n => n.id === chainId) || getChain(chainId);
         if (chain.type !== 'bitcoin-cash') throw new Error('Not on Bitcoin Cash network');
-        if (!bchAddress) throw new Error('BCH address not initialized');
+        if (!activeWallet?.addresses.bch) throw new Error('BCH address not initialized');
 
         const { deriveBitcoinCashKeyPair } = await import('@/lib/wallet/manager');
         const { fetchBchUtxos, sendBitcoinCash } = await import('@/lib/blockchain/bitcoincash');
         
         const keypair = deriveBitcoinCashKeyPair(mnemonic);
-        const utxos = await fetchBchUtxos(bchAddress);
+        const utxos = await fetchBchUtxos(activeWallet.addresses.bch);
         
         // bitcore-lib-cash PrivateKey handles the signing
         const { ECPairFactory } = await import('ecpair');
@@ -510,17 +531,18 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       sendLitecoin: async (recipient, amountLtc, mnemonic, feePriority = 'average') => {
-        const { chainId, networks, ltcAddress } = get();
+        const { activeWalletId, wallets, chainId, networks } = get();
+        const activeWallet = wallets.find(w => w.id === activeWalletId);
         const { LTC_CHAIN_ID } = await import('@/lib/blockchain/chains');
         if (chainId !== LTC_CHAIN_ID) throw new Error('Not on Litecoin network');
-        if (!ltcAddress) throw new Error('Litecoin address not initialized');
+        if (!activeWallet?.addresses.ltc) throw new Error('Litecoin address not initialized');
 
         const { LITECOIN_NETWORK } = await import('@/lib/wallet/manager');
         const { fetchLtcUtxos, broadcastLtcTx, getLtcScriptPubKey } = await import('@/lib/blockchain/litecoin');
         const { fetchRecommendedFees } = await import('@/lib/blockchain/bitcoin'); // Can reuse fee estimator logic if applicable to LTCSpace
         
-        const utxos = await fetchLtcUtxos(ltcAddress);
-        const fees = await fetchRecommendedFees(); // LTC usually has extremely low fees, we can use these or fixed 1-2 sat/vB
+        const utxos = await fetchLtcUtxos(activeWallet.addresses.ltc);
+        const fees = await fetchRecommendedFees(); // LTC usually has extremely low fees
         const feeRate = feePriority === 'fast' ? fees.fastestFee : (feePriority === 'average' ? fees.halfHourFee : fees.hourFee);
 
         const { BIP32Factory } = await import('bip32');
@@ -542,7 +564,7 @@ export const useWalletStore = create<WalletStore>()(
             hash: utxo.txid,
             index: utxo.vout,
             witnessUtxo: {
-              script: getLtcScriptPubKey(ltcAddress),
+              script: getLtcScriptPubKey(activeWallet.addresses.ltc!),
               value: BigInt(utxo.value),
             },
           });
@@ -558,7 +580,7 @@ export const useWalletStore = create<WalletStore>()(
 
         if (totalInput > amountSats + fee) {
           psbt.addOutput({
-            address: ltcAddress,
+            address: activeWallet.addresses.ltc!,
             value: totalInput - amountSats - fee,
           });
         }
@@ -577,37 +599,73 @@ export const useWalletStore = create<WalletStore>()(
     {
       name: 'mgwallet-store',
       storage: createJSONStorage(() => localStorage),
-      version: 4,
+      version: 5,
       migrate: (persistedState: any, version: number) => {
+        let state = persistedState;
+
         if (version < 4) {
-          // Ensure new default chains (like NEAR, Sui, Aptos, etc) are added to existing users
-          const { DEFAULT_CHAINS } = require('@/lib/blockchain/chains');
           const defaults = Object.values(DEFAULT_CHAINS);
-          const current = persistedState.networks || [];
+          const current = state.networks || [];
           const missing = defaults.filter((d: any) => !current.find((n: any) => n.id === d.id));
-          return {
-            ...persistedState,
+          state = {
+            ...state,
             networks: [...current, ...missing]
           };
         }
-        return persistedState;
+
+        if (version < 5) {
+          if (state.encryptedWallet && state.address) {
+            const mainWallet: WalletAccount = {
+              id: 'main-1',
+              name: 'Main Wallet 1',
+              encryptedMnemonic: state.encryptedWallet,
+              addresses: {
+                evm: state.address,
+                btcSegwit: state.btcSegwitAddress,
+                btcTaproot: state.btcTaprootAddress,
+                solana: state.solanaAddress,
+                bch: state.bchAddress,
+                ltc: state.ltcAddress,
+                near: state.nearAddress,
+                sui: state.suiAddress,
+                aptos: state.aptosAddress,
+                cardano: state.cardanoAddress,
+                xrp: state.xrpAddress,
+                ton: state.tonAddress,
+                tron: state.tronAddress,
+              }
+            };
+            state = {
+              ...state,
+              wallets: [mainWallet],
+              activeWalletId: 'main-1',
+              theme: state.theme || 'light',
+              hiddenTokens: state.hiddenTokens || [],
+            };
+            delete state.encryptedWallet;
+            delete state.address;
+            delete state.btcSegwitAddress;
+            delete state.btcTaprootAddress;
+            delete state.solanaAddress;
+            delete state.bchAddress;
+            delete state.ltcAddress;
+            delete state.nearAddress;
+            delete state.suiAddress;
+            delete state.aptosAddress;
+            delete state.cardanoAddress;
+            delete state.xrpAddress;
+            delete state.tonAddress;
+            delete state.tronAddress;
+          }
+        }
+        return state;
       },
       partialize: (state) => ({
-        encryptedWallet: state.encryptedWallet,
-        address: state.address,
-        btcSegwitAddress: state.btcSegwitAddress,
-        btcTaprootAddress: state.btcTaprootAddress,
-        solanaAddress: state.solanaAddress,
-        bchAddress: state.bchAddress,
-        ltcAddress: state.ltcAddress,
-        nearAddress: state.nearAddress,
-        suiAddress: state.suiAddress,
-        aptosAddress: state.aptosAddress,
-        cardanoAddress: state.cardanoAddress,
-        xrpAddress: state.xrpAddress,
-        tonAddress: state.tonAddress,
-        tronAddress: state.tronAddress,
+        wallets: state.wallets,
+        activeWalletId: state.activeWalletId,
         chainId: state.chainId,
+        theme: state.theme,
+        hiddenTokens: state.hiddenTokens,
         customTokens: state.customTokens,
         networks: state.networks,
         addressBook: state.addressBook,

@@ -1,5 +1,10 @@
 import bitcore from 'bitcore-lib-cash';
 
+// Fix for bitcore-lib-cash multi-instance error
+if ((bitcore as any).versionGuard) {
+  (bitcore as any).versionGuard = () => {};
+}
+
 /**
  * MG Wallet - Bitcoin Cash (BCH) Service
  * Integration with Blockbook API

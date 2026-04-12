@@ -29,8 +29,10 @@ const NATIVE_TOKEN_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 export default function SwapPage() {
   const router = useRouter();
   const { 
-    chainId, address, decryptedWallet, balance, tokenBalances, networks 
+    chainId, wallets, activeWalletId, decryptedWallet, balance, tokenBalances, networks 
   } = useWalletStore();
+  const activeWallet = wallets.find(w => w.id === activeWalletId);
+  const address = activeWallet?.addresses.evm || '';
   const currentChain = networks.find(n => n.id === chainId) || getChain(chainId);
 
   // States
