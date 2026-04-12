@@ -7,16 +7,17 @@ import { Keypair } from '@solana/web3.js';
 import * as bip39 from 'bip39';
 import { derivePath } from 'ed25519-hd-key';
 import bs58 from 'bs58';
-import bitcore from 'bitcore-lib-cash';
+// Fix for bitcore-lib-cash multi-instance error
+let bitcore: any;
+if (typeof global !== 'undefined') {
+  if ((global as any)._bitcoreCash) delete (global as any)._bitcoreCash;
+  if ((global as any)._bitcore) delete (global as any)._bitcore;
+}
+bitcore = require('bitcore-lib-cash');
 
 const bip32 = BIP32Factory(ecc);
 const ECPair = ECPairFactory(ecc);
 bitcoin.initEccLib(ecc);
-
-// Fix for bitcore-lib-cash multi-instance error
-if ((bitcore as any).versionGuard) {
-  (bitcore as any).versionGuard = () => {};
-}
 
 export const LITECOIN_NETWORK: bitcoin.Network = {
   messagePrefix: '\x19Litecoin Signed Message:\n',

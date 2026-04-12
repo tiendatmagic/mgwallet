@@ -138,26 +138,43 @@ export const useWalletStore = create<WalletStore>()(
 
       unlock: async (password: string, walletId?: string) => {
         const id = walletId || get().activeWalletId;
-        const walletAccount = get().wallets.find(w => w.id === id);
-        if (!walletAccount) return false;
+        const { wallets, activeWalletId } = get();
+        const idToUnlock = walletId || activeWalletId;
+        if (!idToUnlock) return false;
+
+        const wallet = wallets.find(w => w.id === idToUnlock);
+        if (!wallet) return false;
 
         try {
           const { getDeviceFingerprint } = await import('@/lib/crypto/fingerprint');
           const fingerprint = await getDeviceFingerprint();
           
-          const decryptedData = await decryptData(walletAccount.encryptedMnemonic, password, fingerprint);
-          const walletData: WalletData = JSON.parse(decryptedData);
-          
-          let wallet: Wallet | HDNodeWallet;
-          if (walletData.type === 'mnemonic' && walletData.mnemonic) {
-            const { deriveWalletFromMnemonic } = await import('@/lib/wallet/manager');
-            wallet = deriveWalletFromMnemonic(walletData.mnemonic);
-          } else {
-            const { deriveWalletFromPrivateKey } = await import('@/lib/wallet/manager');
-            wallet = deriveWalletFromPrivateKey(walletData.privateKey);
+          let decryptedData: string;
+          try {
+            // 1. Try with fingerprint (Device Lock)
+            decryptedData = await decryptData(wallet.encryptedMnemonic, password, fingerprint);
+          } catch (e) {
+            // 2. Fallback for legacy wallets (without fingerprint)
+            console.warn('Fingerprint unlock failed, trying legacy fallback...');
+            decryptedData = await decryptData(wallet.encryptedMnemonic, password, '');
           }
 
-          set({ activeWalletId: id, decryptedWallet: wallet, isLocked: false });
+          const walletData: WalletData = JSON.parse(decryptedData);
+          
+          let ethersWallet: Wallet | HDNodeWallet;
+          if (walletData.mnemonic) {
+            ethersWallet = Wallet.fromPhrase(walletData.mnemonic);
+          } else if (walletData.privateKey) {
+            ethersWallet = new Wallet(walletData.privateKey);
+          } else {
+            throw new Error('Invalid wallet data');
+          }
+
+          set({ 
+            activeWalletId: idToUnlock, 
+            decryptedWallet: ethersWallet, 
+            isLocked: false 
+          });
           get().updateBalance();
           get().updateTransactions();
           get().updatePrices();

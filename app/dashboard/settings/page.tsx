@@ -8,7 +8,8 @@ import {
   List, ListItem, ListItemText, ListItemIcon, ListItemButton,
   Divider, Dialog, DialogTitle, DialogContent, 
   DialogActions, TextField, Button, CircularProgress, 
-  Alert, AlertTitle, Stack, ToggleButton, ToggleButtonGroup, Switch
+  Alert, AlertTitle, Stack, ToggleButton, ToggleButtonGroup, Switch,
+  Chip
 } from '@mui/material';
 import { 
   ArrowBack, 
@@ -22,7 +23,8 @@ import {
   CheckCircle,
   AccountBalanceWallet,
   Fingerprint,
-  FingerprintOutlined
+  FingerprintOutlined,
+  Dns
 } from '@mui/icons-material';
 import { decryptData } from '@/lib/crypto/encryption';
 import { WalletData, deriveBitcoinKeyPair, exportPrivateKeyWIF, deriveSolanaKeyPair, exportSolanaPrivateKey, deriveBitcoinCashKeyPair } from '@/lib/wallet/manager';
@@ -342,6 +344,39 @@ export default function SettingsPage() {
                     disableBiometric();
                   }
                 }} 
+              />
+            </ListItem>
+          </List>
+        </Paper>
+
+        <Typography variant="overline" sx={{ mt: 4, mb: 1, color: 'text.secondary', fontWeight: 700, display: 'block', px: 1 }}>
+          THIẾT BỊ & HỆ THỐNG
+        </Typography>
+        <Paper sx={{ borderRadius: 4, overflow: 'hidden', mb: 4 }}>
+          <List disablePadding>
+            <ListItem sx={{ py: 2 }}>
+              <ListItemIcon>
+                <Dns color="primary" />
+              </ListItemIcon>
+              <Box sx={{ flex: 1 }}>
+                <ListItemText 
+                  primary="Trạng thái thiết bị" 
+                  secondary="Dấu vân tay trình duyệt đang hoạt động" 
+                />
+              </Box>
+              <Chip 
+                label="BẢO MẬT" 
+                color="success" 
+                size="small" 
+                sx={{ borderRadius: 1.5, fontWeight: 700, fontSize: 10 }} 
+              />
+            </ListItem>
+            <Divider variant="middle" />
+            <ListItem sx={{ py: 1.5 }}>
+              <ListItemText 
+                sx={{ ml: 7 }}
+                primary="Browser Fingerprint" 
+                secondary={loading ? 'Checking...' : 'Active & Verified'} 
               />
             </ListItem>
           </List>

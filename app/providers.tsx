@@ -17,54 +17,59 @@ export function Providers({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute('data-theme', storeTheme);
   }, [storeTheme]);
 
-  const theme = useMemo(() => createTheme({
-    palette: {
-      mode: storeTheme,
-      primary: {
-        main: '#3375BB', // Trust Blue
+  const theme = useMemo(() => {
+    // During hydration, we must use a stable theme (light) to match the server output
+    const activeMode = mounted ? storeTheme : 'light';
+    
+    return createTheme({
+      palette: {
+        mode: activeMode,
+        primary: {
+          main: '#3375BB', // Trust Blue
+        },
+        secondary: {
+          main: '#00BD84', // Success Green
+        },
+        background: {
+          default: activeMode === 'dark' ? '#111111' : '#FFFFFF',
+          paper: activeMode === 'dark' ? '#1C1C1E' : '#F5F7F9',
+        },
+        text: {
+          primary: activeMode === 'dark' ? '#F5F7FA' : '#1A1C1E',
+        }
       },
-      secondary: {
-        main: '#00BD84', // Success Green
+      typography: {
+        fontFamily: 'inherit',
+        button: {
+          textTransform: 'none',
+          fontWeight: 600,
+        }
       },
-      background: {
-        default: storeTheme === 'dark' ? '#111111' : '#FFFFFF',
-        paper: storeTheme === 'dark' ? '#1C1C1E' : '#F5F7F9',
+      shape: {
+        borderRadius: 16,
       },
-      text: {
-        primary: storeTheme === 'dark' ? '#F5F7FA' : '#1A1C1E',
-      }
-    },
-    typography: {
-      fontFamily: 'inherit',
-      button: {
-        textTransform: 'none',
-        fontWeight: 600,
-      }
-    },
-    shape: {
-      borderRadius: 16,
-    },
-    components: {
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            padding: '12px 24px',
-            borderRadius: 100, // Rounded buttons like Trust
+      components: {
+        MuiButton: {
+          styleOverrides: {
+            root: {
+              padding: '12px 24px',
+              borderRadius: 100, // Rounded buttons like Trust
+            }
+          },
+          defaultProps: {
+            disableElevation: true,
           }
         },
-        defaultProps: {
-          disableElevation: true,
-        }
-      },
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            backgroundImage: 'none',
+        MuiPaper: {
+          styleOverrides: {
+            root: {
+              backgroundImage: 'none',
+            }
           }
         }
       }
-    }
-  }), [storeTheme]);
+    });
+  }, [mounted, storeTheme]);
 
   if (!mounted) {
     return <Box sx={{ flex: 1, bgcolor: storeTheme === 'dark' ? '#111111' : '#FFFFFF' }} />;
