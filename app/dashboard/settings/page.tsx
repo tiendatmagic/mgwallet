@@ -95,7 +95,18 @@ export default function SettingsPage() {
       const activeWallet = wallets.find(w => w.id === activeWalletId);
       if (!activeWallet) throw new Error('No active wallet');
       
-      const decryptedData = await decryptData(activeWallet.encryptedMnemonic, password);
+      const { getDeviceFingerprint } = await import('@/lib/crypto/fingerprint');
+      const fingerprint = await getDeviceFingerprint();
+      
+      let decryptedData: string;
+      try {
+        // 1. Try with fingerprint
+        decryptedData = await decryptData(activeWallet.encryptedMnemonic, password, fingerprint);
+      } catch (e) {
+        // 2. Fallback for legacy wallets
+        decryptedData = await decryptData(activeWallet.encryptedMnemonic, password, '');
+      }
+
       const walletData: WalletData = JSON.parse(decryptedData);
       setRevealWalletData(walletData);
       
@@ -235,7 +246,7 @@ export default function SettingsPage() {
       {/* Settings List */}
       <Box sx={{ p: 2, flex: 1 }}>
         <Typography variant="overline" sx={{ px: 1, color: 'text.muted', fontWeight: 700 }}>Chung</Typography>
-        <Paper sx={{ borderRadius: 3, mt: 1, mb: 3, overflow: 'hidden' }}>
+        <Paper sx={{ borderRadius: 1.5, mt: 1, mb: 3, overflow: 'hidden' }}>
           <List disablePadding>
             <ListItem disablePadding>
               <ListItemButton onClick={() => router.push('/onboarding')} sx={{ py: 1.5 }}>
@@ -266,7 +277,7 @@ export default function SettingsPage() {
         </Paper>
 
         <Typography variant="overline" sx={{ px: 1, color: 'text.muted', fontWeight: 700 }}>Bảo mật</Typography>
-        <Paper sx={{ borderRadius: 3, mt: 1, overflow: 'hidden' }}>
+        <Paper sx={{ borderRadius: 1.5, mt: 1, overflow: 'hidden' }}>
           <List disablePadding>
             <ListItem disablePadding sx={{ py: 0.5 }}>
               <ListItemButton 
@@ -352,7 +363,7 @@ export default function SettingsPage() {
         <Typography variant="overline" sx={{ mt: 4, mb: 1, color: 'text.secondary', fontWeight: 700, display: 'block', px: 1 }}>
           THIẾT BỊ & HỆ THỐNG
         </Typography>
-        <Paper sx={{ borderRadius: 4, overflow: 'hidden', mb: 4 }}>
+        <Paper sx={{ borderRadius: 1.5, overflow: 'hidden', mb: 4 }}>
           <List disablePadding>
             <ListItem sx={{ py: 2 }}>
               <ListItemIcon>
@@ -393,7 +404,7 @@ export default function SettingsPage() {
       <Dialog 
         open={verifyDialogOpen} 
         onClose={() => setVerifyDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 350 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 350 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Enter Password</DialogTitle>
         <DialogContent>
@@ -430,12 +441,12 @@ export default function SettingsPage() {
       <Dialog 
         open={changePassDialogOpen} 
         onClose={() => setChangePassDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 400 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 400 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Change Password</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {success ? (
-            <Alert icon={<CheckCircle fontSize="inherit" />} severity="success" sx={{ borderRadius: 2 }}>
+            <Alert icon={<CheckCircle fontSize="inherit" />} severity="success" sx={{ borderRadius: 1.5 }}>
               <AlertTitle>Success</AlertTitle>
               {success}
             </Alert>
@@ -493,13 +504,13 @@ export default function SettingsPage() {
       <Dialog 
         open={revealDialogOpen} 
         onClose={() => setRevealDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 450 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 450 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>
           {revealType === 'mnemonic' ? 'Recovery Phrase' : 'Private Key'}
         </DialogTitle>
         <DialogContent sx={{ py: 2 }}>
-          <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+          <Alert severity="warning" sx={{ mb: 3, borderRadius: 1.5 }}>
             <AlertTitle>Confidential Information</AlertTitle>
             Never share this with anyone. Anyone with this info can steal your assets.
           </Alert>
@@ -534,7 +545,7 @@ export default function SettingsPage() {
             position: 'relative',
             p: 3, 
             bgcolor: 'surface', 
-            borderRadius: 2, 
+            borderRadius: 1.5, 
             border: '1px solid',
             borderColor: 'border',
             display: 'flex',
@@ -602,12 +613,12 @@ export default function SettingsPage() {
       <Dialog 
         open={biometricDialogOpen} 
         onClose={() => !loading && setBiometricDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 380 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 380 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Enable Biometric Lock</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {success ? (
-            <Alert severity="success" sx={{ borderRadius: 2 }}>
+            <Alert severity="success" sx={{ borderRadius: 1.5 }}>
               {success}
             </Alert>
           ) : (

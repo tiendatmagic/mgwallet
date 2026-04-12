@@ -46,14 +46,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }
       },
       shape: {
-        borderRadius: 16,
+        borderRadius: 12,
       },
       components: {
         MuiButton: {
           styleOverrides: {
             root: {
               padding: '12px 24px',
-              borderRadius: 100, // Rounded buttons like Trust
+              borderRadius: 12, // Normal rounded corners
             }
           },
           defaultProps: {

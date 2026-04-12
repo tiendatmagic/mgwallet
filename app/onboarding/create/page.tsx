@@ -33,7 +33,7 @@ export default function CreateWalletPage() {
         </Typography>
       </Box>
 
-      <Paper sx={{ p: 4, borderRadius: 4, bgcolor: 'surface', mb: 6 }}>
+      <Paper sx={{ p: 4, borderRadius: 1.5, bgcolor: 'surface', mb: 6 }}>
         <Security sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
         <Typography variant="h6" fontWeight={700} gutterBottom>Select Phrase Length</Typography>
         
@@ -42,7 +42,7 @@ export default function CreateWalletPage() {
             variant={wordCount === 12 ? 'contained' : 'outlined'} 
             fullWidth 
             onClick={() => setWordCount(12)}
-            sx={{ borderRadius: '12px', py: 1.5 }}
+            sx={{ py: 1.5 }}
           >
             12 Words
           </Button>
@@ -50,7 +50,7 @@ export default function CreateWalletPage() {
             variant={wordCount === 24 ? 'contained' : 'outlined'} 
             fullWidth 
             onClick={() => setWordCount(24)}
-            sx={{ borderRadius: '12px', py: 1.5 }}
+            sx={{ py: 1.5 }}
           >
             24 Words
           </Button>
@@ -61,7 +61,7 @@ export default function CreateWalletPage() {
       </Paper>
 
       <Box sx={{ mt: 'auto' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, p: 2, borderRadius: 2, bgcolor: 'rgba(255, 138, 0, 0.1)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, p: 2, borderRadius: 1.5, bgcolor: 'rgba(255, 138, 0, 0.1)' }}>
           <VerifiedUser sx={{ color: 'secondary.main', fontSize: 20 }} />
           <Typography variant="caption" fontWeight={600} sx={{ color: 'secondary.main' }}>
             We do not store your phrase on our servers.
@@ -73,7 +73,7 @@ export default function CreateWalletPage() {
           size="large"
           color="primary"
           onClick={handleNext}
-          sx={{ borderRadius: '16px', py: 2, fontSize: '1.1rem' }}
+          sx={{ py: 2, fontSize: '1.1rem' }}
         >
           Create Wallet
         </Button>

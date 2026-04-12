@@ -11,7 +11,7 @@ export interface Chain {
   symbol: string;
   logo: string;
   color: string;
-  type: 'evm' | 'bitcoin' | 'solana' | 'bitcoin-cash';
+  type: 'evm' | 'bitcoin' | 'solana' | 'bitcoin-cash' | 'near' | 'sui' | 'aptos' | 'cardano' | 'xrp' | 'ton' | 'tron';
   bitcoinType?: 'segwit' | 'taproot';
 }
 
@@ -139,7 +139,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     symbol: 'NEAR',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/near/info/logo.png',
     color: '#000000',
-    type: 'evm', // Custom handling
+    type: 'near',
   },
   [SUI_CHAIN_ID]: {
     id: SUI_CHAIN_ID,
@@ -149,7 +149,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     symbol: 'SUI',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/sui/info/logo.png',
     color: '#6FBCF0',
-    type: 'evm', // Custom handling
+    type: 'sui',
   },
   [APTOS_CHAIN_ID]: {
     id: APTOS_CHAIN_ID,
@@ -159,7 +159,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     symbol: 'APT',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/aptos/info/logo.png',
     color: '#2DD4BF',
-    type: 'evm', // Custom handling
+    type: 'aptos',
   },
   [CARDANO_CHAIN_ID]: {
     id: CARDANO_CHAIN_ID,
@@ -169,7 +169,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     symbol: 'ADA',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/cardano/info/logo.png',
     color: '#0033AD',
-    type: 'evm', // Custom handling
+    type: 'cardano',
   },
   [XRP_CHAIN_ID]: {
     id: XRP_CHAIN_ID,
@@ -179,7 +179,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     symbol: 'XRP',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ripple/info/logo.png',
     color: '#23292F',
-    type: 'evm', // Custom handling
+    type: 'xrp',
   },
   [TON_CHAIN_ID]: {
     id: TON_CHAIN_ID,
@@ -189,7 +189,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     symbol: 'TON',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ton/info/logo.png',
     color: '#0088CC',
-    type: 'evm', // Custom handling
+    type: 'ton',
   },
   [TRX_CHAIN_ID]: {
     id: TRX_CHAIN_ID,
@@ -199,7 +199,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
     symbol: 'TRX',
     logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/info/logo.png',
     color: '#FF0013',
-    type: 'evm', // Custom handling
+    type: 'tron',
   },
 };
 

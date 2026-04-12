@@ -204,7 +204,7 @@ export default function SwapPage() {
       </Box>
 
       <Box sx={{ p: 2, maxWidth: 500, mx: 'auto', width: '100%' }}>
-        <Paper sx={{ p: 3, borderRadius: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'border' }}>
+        <Paper sx={{ p: 3, borderRadius: 1.5, bgcolor: 'background.default', border: '1px solid', borderColor: 'border' }}>
           {/* From Token */}
           <Box sx={{ p: 2, bgcolor: 'surface', borderRadius: 1.5, mb: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -280,7 +280,7 @@ export default function SwapPage() {
 
           {/* Quote info */}
           {quote && (
-            <Box sx={{ mt: 3, p: 2, borderRadius: 3, border: '1px dashed', borderColor: 'divider' }}>
+            <Box sx={{ mt: 3, p: 2, borderRadius: 1.5, border: '1px dashed', borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2" color="text.muted">Rate</Typography>
                 <Typography variant="body2" fontWeight={600}>1 {fromToken?.symbol} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(6)} {toToken?.symbol}</Typography>
@@ -293,7 +293,7 @@ export default function SwapPage() {
           )}
 
           {error && (
-            <Alert severity="error" sx={{ mt: 2, borderRadius: 3 }}>
+            <Alert severity="error" sx={{ mt: 2, borderRadius: 1.5 }}>
               {error}
             </Alert>
           )}
@@ -311,14 +311,14 @@ export default function SwapPage() {
         </Paper>
 
         <Box sx={{ mt: 3 }}>
-          <Alert severity="info" variant="outlined" sx={{ borderRadius: 3 }}>
+          <Alert severity="info" variant="outlined" sx={{ borderRadius: 1.5 }}>
             Powered by 1inch Aggregator. Best rates guaranteed.
           </Alert>
         </Box>
       </Box>
 
       {/* Token Selector Dialog */}
-      <Dialog open={tokenSelectorOpen} onClose={() => setTokenSelectorOpen(false)} PaperProps={{ sx: { borderRadius: 2, width: '100%', maxWidth: 400, maxHeight: '70vh' } }}>
+      <Dialog open={tokenSelectorOpen} onClose={() => setTokenSelectorOpen(false)} PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 400, maxHeight: '70vh' } }}>
         <DialogTitle sx={{ fontWeight: 800 }}>Select Token</DialogTitle>
         <List sx={{ pt: 0 }}>
           {availableTokens.map((token) => (

@@ -72,7 +72,7 @@ export default function ManageTokens() {
                   <Search />
                 </InputAdornment>
               ),
-              sx: { borderRadius: 3, bgcolor: 'surface' }
+              sx: { borderRadius: 1.5, bgcolor: 'surface' }
             }
           }}
         />

@@ -35,10 +35,9 @@ export default function OnboardingPage() {
         textAlign: 'center',
         pb: 10
       }}>
-      <Box sx={{ 
         width: 80, 
         height: 80, 
-        borderRadius: 4, 
+        borderRadius: 1.5, 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
@@ -63,7 +62,7 @@ export default function OnboardingPage() {
             color="primary"
             startIcon={<Add />}
             onClick={() => router.push('/onboarding/create')}
-            sx={{ borderRadius: 3, py: 2, fontSize: '1.1rem' }}
+            sx={{ py: 2, fontSize: '1.1rem' }}
           >
             Create New Wallet
           </Button>
@@ -73,7 +72,7 @@ export default function OnboardingPage() {
             size="large"
             startIcon={<Restore />}
             onClick={() => router.push('/onboarding/import')}
-            sx={{ borderRadius: 3, py: 2, fontSize: '1.1rem' }}
+            sx={{ py: 2, fontSize: '1.1rem' }}
           >
             Import Secret Phrase
           </Button>

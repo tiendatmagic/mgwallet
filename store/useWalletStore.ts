@@ -331,9 +331,8 @@ export const useWalletStore = create<WalletStore>()(
             return;
           }
 
-          const { NEAR_CHAIN_ID, SUI_CHAIN_ID, APTOS_CHAIN_ID, CARDANO_CHAIN_ID, XRP_CHAIN_ID, TON_CHAIN_ID, TRX_CHAIN_ID } = await import('@/lib/blockchain/chains');
-          
-          if (chainId === NEAR_CHAIN_ID || chainId === SUI_CHAIN_ID || chainId === APTOS_CHAIN_ID || chainId === CARDANO_CHAIN_ID || chainId === XRP_CHAIN_ID || chainId === TON_CHAIN_ID || chainId === TRX_CHAIN_ID) {
+          const NON_EVM_TYPES = ['near', 'sui', 'aptos', 'cardano', 'xrp', 'ton', 'tron'];
+          if (NON_EVM_TYPES.includes(chain.type as any)) {
             set({ balance: '0.00', tokenBalances: [] });
             return;
           }
@@ -415,9 +414,11 @@ export const useWalletStore = create<WalletStore>()(
             return;
           }
 
-          if (DEFAULT_CHAINS[chainId]) {
+          if (chain.type === 'evm') {
             const txs = await getTransactionHistory(evm, chainId);
             set({ transactions: txs });
+          } else {
+            set({ transactions: [] });
           }
         } catch (error) {
           console.warn(`Failed to fetch transactions for chain ${chainId}:`, error);
@@ -469,7 +470,16 @@ export const useWalletStore = create<WalletStore>()(
           const fingerprint = await getDeviceFingerprint();
           
           const updatedWallets = await Promise.all(wallets.map(async (w) => {
-            const decryptedData = await decryptData(w.encryptedMnemonic, oldPassword, fingerprint);
+            let decryptedData: string;
+            try {
+              // Try with current fingerprint first
+              decryptedData = await decryptData(w.encryptedMnemonic, oldPassword, fingerprint);
+            } catch (e) {
+              // Fallback to legacy (no fingerprint)
+              decryptedData = await decryptData(w.encryptedMnemonic, oldPassword, '');
+            }
+            
+            // Re-encrypt with new password AND include fingerprint (upgrade security)
             const newEncryptedMnemonic = await encryptData(decryptedData, newPassword, fingerprint);
             return { ...w, encryptedMnemonic: newEncryptedMnemonic };
           }));

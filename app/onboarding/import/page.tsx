@@ -87,11 +87,11 @@ export default function ImportWalletPage() {
         onChange={(e) => setInput(e.target.value)}
         error={!!error}
         helperText={error}
-        InputProps={{ sx: { borderRadius: 3, bgcolor: 'surface' } }}
+        InputProps={{ sx: { borderRadius: 1.5, bgcolor: 'surface' } }}
       />
 
       {tab === 1 && (
-        <Paper sx={{ p: 2, bgcolor: 'rgba(255, 138, 0, 0.05)', borderRadius: 3, mt: 3, display: 'flex', gap: 2, border: '1px solid', borderColor: 'secondary.light' }}>
+        <Paper sx={{ p: 2, bgcolor: 'rgba(255, 138, 0, 0.05)', borderRadius: 1.5, mt: 3, display: 'flex', gap: 2, border: '1px solid', borderColor: 'secondary.light' }}>
           <Warning sx={{ color: 'secondary.main', mt: 0.5 }} />
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             Private keys do not contain mnemonic phrases. If you lose this key, you lose access to the wallet.
@@ -107,7 +107,7 @@ export default function ImportWalletPage() {
           color="primary"
           onClick={handleImport}
           disabled={!input.trim()}
-          sx={{ borderRadius: '16px', py: 2, fontSize: '1.1rem' }}
+          sx={{ py: 2, fontSize: '1.1rem' }}
         >
           Import Wallet
         </Button>

@@ -163,7 +163,7 @@ export default function ManageNetworksPage() {
         </List>
       </Box>
 
-      <Dialog open={open} onClose={() => setOpen(false)} PaperProps={{ sx: { borderRadius: 2, width: '100%', maxWidth: 450 } }}>
+      <Dialog open={open} onClose={() => setOpen(false)} PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 450 } }}>
         <DialogTitle sx={{ fontWeight: 800 }}>{editingId ? 'Edit Network' : 'Add Custom RPC'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
           <TextField fullWidth label="Network Name" variant="outlined" value={name} onChange={(e) => setName(e.target.value)} InputProps={{ sx: { borderRadius: 1.5 } }} />

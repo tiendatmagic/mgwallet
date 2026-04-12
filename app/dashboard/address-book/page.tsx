@@ -82,7 +82,7 @@ export default function AddressBookPage() {
         )}
       </Box>
 
-      <Dialog open={open} onClose={() => setOpen(false)} PaperProps={{ sx: { borderRadius: 2, width: '100%', maxWidth: 400 } }}>
+      <Dialog open={open} onClose={() => setOpen(false)} PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 400 } }}>
         <DialogTitle sx={{ fontWeight: 800 }}>Add Contact</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
           <TextField 

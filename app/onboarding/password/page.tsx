@@ -119,7 +119,7 @@ export default function UniversalPasswordPage() {
             variant="outlined"
             value={walletName}
             onChange={(e) => setWalletName(e.target.value)}
-            InputProps={{ sx: { borderRadius: 3 } }}
+            InputProps={{ sx: { borderRadius: 1.5 } }}
           />
 
           <Box>
@@ -131,7 +131,7 @@ export default function UniversalPasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               InputProps={{
-                sx: { borderRadius: 3 },
+                sx: { borderRadius: 1.5 },
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton onClick={() => setShowPassword(!showPassword)}>
@@ -147,7 +147,7 @@ export default function UniversalPasswordPage() {
                 value={strength} 
                 sx={{ 
                   height: 4, 
-                  borderRadius: 2, 
+                  borderRadius: 1, 
                   bgcolor: 'border',
                   '& .MuiLinearProgress-bar': {
                     bgcolor: strength < 50 ? 'error.main' : strength < 100 ? 'warning.main' : 'success.main'
@@ -165,11 +165,11 @@ export default function UniversalPasswordPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             error={confirmPassword.length > 0 && confirmPassword !== password}
-            InputProps={{ sx: { borderRadius: 3 } }}
+            InputProps={{ sx: { borderRadius: 1.5 } }}
           />
         </Box>
 
-        <Paper sx={{ p: 2, bgcolor: 'surface', borderRadius: 3, mt: 4, display: 'flex', gap: 1.5, border: '1px solid', borderColor: 'border' }}>
+        <Paper sx={{ p: 2, bgcolor: 'surface', borderRadius: 1.5, mt: 4, display: 'flex', gap: 1.5, border: '1px solid', borderColor: 'border' }}>
           <Lock sx={{ color: 'secondary.main', fontSize: 24 }} />
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             We cannot recover this password. If you forget it, you will need to re-import your wallet using your secret phrase.
@@ -184,7 +184,7 @@ export default function UniversalPasswordPage() {
             color="primary"
             type="submit"
             disabled={loading || password.length < 8 || password !== confirmPassword}
-            sx={{ borderRadius: '16px', py: 2, fontSize: '1.1rem' }}
+            sx={{ py: 2, fontSize: '1.1rem' }}
           >
             {loading ? 'Processing...' : 'Secure My Wallet'}
           </Button>

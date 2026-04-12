@@ -223,17 +223,24 @@ export default function DashboardPage() {
 
   const currentChain = getChain(chainId);
   const activeWallet = wallets.find(w => w.id === activeWalletId);
-  const displayAddress = activeWallet?.addresses[currentChain.type === 'evm' ? 'evm' : 
-    (currentChain.type === 'bitcoin' ? (currentChain.symbol === 'LTC' ? 'ltc' : (currentChain.bitcoinType === 'segwit' ? 'btcSegwit' : 'btcTaproot')) : 
-    (currentChain.type === 'solana' ? 'solana' : 
-    (currentChain.type === 'bitcoin-cash' ? 'bch' : 
-    (currentChain.symbol === 'NEAR' ? 'near' :
-    (currentChain.symbol === 'SUI' ? 'sui' :
-    (currentChain.symbol === 'APT' ? 'aptos' :
-    (currentChain.symbol === 'ADA' ? 'cardano' :
-    (currentChain.symbol === 'XRP' ? 'xrp' :
-    (currentChain.symbol === 'TON' ? 'ton' :
-    (currentChain.symbol === 'TRX' ? 'tron' : 'evm'))))))))))] as string;
+  const getDisplayAddress = () => {
+    if (!activeWallet) return '';
+    const type = currentChain.type;
+    const addresses = activeWallet.addresses;
+
+    if (type === 'evm') return addresses.evm;
+    if (type === 'bitcoin') {
+      if (currentChain.symbol === 'LTC') return addresses.ltc;
+      return currentChain.bitcoinType === 'segwit' ? addresses.btcSegwit : addresses.btcTaproot;
+    }
+    if (type === 'solana') return addresses.solana;
+    if (type === 'bitcoin-cash') return addresses.bch;
+    
+    // For other non-EVM chains (near, sui, ton, etc.), the type matches the address key
+    return (addresses as any)[type] || addresses.evm;
+  };
+
+  const displayAddress = getDisplayAddress();
 
   const cgId = CHAIN_PRICE_IDS[chainId];
   const nativePrice = prices[cgId] || 0;
@@ -252,7 +259,7 @@ export default function DashboardPage() {
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 4, pt: 10 }}>
         <Box sx={{ textAlign: 'center', mb: 8 }}>
           <Box className="gradient-bg" sx={{ 
-            width: 80, height: 80, borderRadius: 2, 
+            width: 80, height: 80, borderRadius: 1.5, 
             mx: 'auto', mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' 
           }}>
             <LockOutlined sx={{ fontSize: 40, color: 'white' }} />
@@ -283,7 +290,7 @@ export default function DashboardPage() {
             color="primary"
             type="submit"
             disabled={unlockLoading || !password}
-            sx={{ borderRadius: 1.5, py: 2, fontSize: '1.1rem', mt: 4 }}
+            sx={{ py: 2, fontSize: '1.1rem', mt: 4 }}
           >
             {unlockLoading ? <CircularProgress size={24} color="inherit" /> : 'Unlock'}
           </Button>
@@ -296,7 +303,7 @@ export default function DashboardPage() {
               onClick={handleBiometricUnlock}
               disabled={unlockLoading}
               startIcon={<Fingerprint />}
-              sx={{ py: 2, borderRadius: 1.5, mt: 2, fontSize: '1.1rem' }}
+              sx={{ py: 2, mt: 2, fontSize: '1.1rem' }}
             >
               Mở khóa bằng vân tay/PIN
             </Button>
@@ -351,7 +358,7 @@ export default function DashboardPage() {
         anchorEl={networkMenuAnchor}
         open={Boolean(networkMenuAnchor)}
         onClose={() => setNetworkMenuAnchor(null)}
-        PaperProps={{ sx: { borderRadius: 3, mt: 1, minWidth: 280, p: 1 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, mt: 1, minWidth: 280, p: 1 } }}
       >
         <Typography variant="overline" sx={{ px: 2, pt: 1, display: 'block', color: 'text.muted' }}>CHỌN VÍ</Typography>
         {wallets.map((w) => (
@@ -360,7 +367,7 @@ export default function DashboardPage() {
             selected={activeWalletId === w.id}
             onClick={() => { switchWallet(w.id); setNetworkMenuAnchor(null); }}
             sx={{ 
-              borderRadius: 2, 
+              borderRadius: 1, 
               my: 0.5,
               display: 'flex',
               alignItems: 'center',
@@ -415,7 +422,7 @@ export default function DashboardPage() {
           </MenuItem>
         ))}
         <Divider sx={{ my: 1 }} />
-        <MenuItem onClick={() => { router.push('/onboarding'); setNetworkMenuAnchor(null); }} sx={{ borderRadius: 2 }}>
+        <MenuItem onClick={() => { router.push('/onboarding'); setNetworkMenuAnchor(null); }} sx={{ borderRadius: 1 }}>
            <ListItemText primary="+ Thêm ví mới" sx={{ color: 'primary.main', fontWeight: 600 }} />
         </MenuItem>
       </Menu>
@@ -435,7 +442,7 @@ export default function DashboardPage() {
             onClick={handleCopy}
             onDelete={handleCopy}
             deleteIcon={copied ? <CheckCircle sx={{ fontSize: 14, color: 'success.main' }} /> : <CopyAll sx={{ fontSize: 14 }} />}
-            sx={{ height: 24, borderRadius: 10, bgcolor: 'surface', fontWeight: 600 }}
+            sx={{ height: 24, borderRadius: 1.5, bgcolor: 'surface', fontWeight: 600 }}
           />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1, gap: 0.5 }}>
@@ -542,7 +549,7 @@ export default function DashboardPage() {
               {tokenBalances.filter(t => t.isVisible).map((token) => (
                 <ListItem 
                   key={token.address}
-                  sx={{ px: 1, borderRadius: 3, '&:hover': { bgcolor: 'surface' } }}
+                  sx={{ px: 1, borderRadius: 1.5, '&:hover': { bgcolor: 'surface' } }}
                   secondaryAction={
                     <Box textAlign="right">
                       <Typography fontWeight={700}>{parseFloat(token.balance).toFixed(4)} {token.symbol}</Typography>
@@ -638,7 +645,7 @@ export default function DashboardPage() {
       <Dialog 
         open={receiveDialogOpen} 
         onClose={() => setReceiveDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 2, width: '100%', maxWidth: 350 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 350 } }}
       >
         <DialogTitle sx={{ textAlign: 'center', fontWeight: 800 }}>Receive {currentChain.symbol}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
@@ -676,7 +683,7 @@ export default function DashboardPage() {
       <Dialog 
         open={sendDialogOpen} 
         onClose={() => setSendDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 2, width: '100%', maxWidth: 400 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 400 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Send {currentChain.symbol}</DialogTitle>
         <DialogContent sx={{ py: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -714,7 +721,7 @@ export default function DashboardPage() {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               InputProps={{ 
-                sx: { borderRadius: 3 },
+                sx: { borderRadius: 1.5 },
                 endAdornment: <InputAdornment position="end">{currentChain.symbol}</InputAdornment>
               }}
             />
@@ -746,7 +753,7 @@ export default function DashboardPage() {
             disableElevation
             onClick={handleSend}
             disabled={txLoading || !recipient || !amount}
-            sx={{ borderRadius: 3, px: 4 }}
+            sx={{ borderRadius: 1.5, px: 4 }}
           >
             {txLoading ? <CircularProgress size={20} color="inherit" /> : 'Send Now'}
           </Button>
@@ -756,11 +763,11 @@ export default function DashboardPage() {
       <Dialog 
         open={addTokenDialogOpen} 
         onClose={() => setAddTokenDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 2, width: '100%', maxWidth: 400 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 400 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Add Custom Token</DialogTitle>
         <DialogContent sx={{ py: 2 }}>
-          <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255, 0, 122, 0.05)', borderRadius: 2, display: 'flex', gap: 2 }}>
+          <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255, 0, 122, 0.05)', borderRadius: 1.5, display: 'flex', gap: 2 }}>
             <AccountBalanceWallet sx={{ color: 'primary.main' }} />
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Import tokens by entering their verified contract address.
@@ -792,7 +799,7 @@ export default function DashboardPage() {
               setNewTokenAddress('');
             }}
             disabled={!newTokenAddress.startsWith('0x')}
-            sx={{ borderRadius: 3, px: 4 }}
+            sx={{ borderRadius: 1.5, px: 4 }}
           >
             Import
           </Button>
@@ -803,7 +810,7 @@ export default function DashboardPage() {
       <Dialog 
         open={renameDialogOpen} 
         onClose={() => setRenameDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 350 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 350 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Sửa tên ví</DialogTitle>
         <DialogContent sx={{ py: 1 }}>
@@ -815,7 +822,7 @@ export default function DashboardPage() {
             value={newWalletName}
             onChange={(e) => setNewWalletName(e.target.value)}
             sx={{ mt: 1 }}
-            InputProps={{ sx: { borderRadius: 2 } }}
+            InputProps={{ sx: { borderRadius: 1.5 } }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 2, px: 3 }}>
@@ -824,7 +831,7 @@ export default function DashboardPage() {
             variant="contained" 
             onClick={handleRenameWallet}
             disabled={!newWalletName.trim() || newWalletName === walletToManage?.name}
-            sx={{ borderRadius: 2 }}
+            sx={{ borderRadius: 1.5 }}
           >
             Lưu
           </Button>
@@ -835,7 +842,7 @@ export default function DashboardPage() {
       <Dialog 
         open={deleteDialogOpen} 
         onClose={() => setDeleteDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 350 } }}
+        PaperProps={{ sx: { borderRadius: 1.5, width: '100%', maxWidth: 350 } }}
       >
         <DialogTitle sx={{ fontWeight: 800, color: 'error.main' }}>Xóa ví?</DialogTitle>
         <DialogContent>
@@ -850,7 +857,7 @@ export default function DashboardPage() {
             variant="contained" 
             color="error" 
             onClick={handleDeleteWallet}
-            sx={{ borderRadius: 2 }}
+            sx={{ borderRadius: 1.5 }}
           >
             Xóa ngay
           </Button>

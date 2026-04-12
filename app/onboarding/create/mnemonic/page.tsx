@@ -56,7 +56,7 @@ function MnemonicContent() {
       <Box sx={{ position: 'relative' }}>
         <Paper sx={{ 
           p: 3, 
-          borderRadius: 4, 
+          borderRadius: 1.5, 
           bgcolor: 'surface', 
           border: '1px solid', 
           borderColor: 'border',
@@ -93,7 +93,6 @@ function MnemonicContent() {
                 variant="contained" 
                 color="primary" 
                 onClick={() => setVisible(true)}
-                sx={{ borderRadius: '12px' }}
               >
                 Reveal Phrase
               </Button>
@@ -105,7 +104,7 @@ function MnemonicContent() {
               <Grid key={index} size={{ xs: 4 }}>
                 <Box sx={{ 
                   p: 1.2, 
-                  borderRadius: 2, 
+                  borderRadius: 1, 
                   bgcolor: 'background.default', 
                   border: '1px solid', 
                   borderColor: 'border',
@@ -152,7 +151,7 @@ function MnemonicContent() {
           color="primary"
           onClick={handleNext}
           disabled={!visible}
-          sx={{ borderRadius: '16px', py: 2, fontSize: '1.1rem' }}
+          sx={{ py: 2, fontSize: '1.1rem' }}
         >
           I've Backed Up My Phrase
         </Button>
