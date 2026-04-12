@@ -32,6 +32,7 @@ export default function ManageNetworksPage() {
         name,
         rpc,
         symbol,
+        type: 'evm', // Custom networks are always EVM for now
         explorer: explorer || '',
         logo: editingId ? (networks.find(n => n.id === editingId)?.logo || '') : '',
         color: '#9c27b0'

@@ -11,6 +11,8 @@ export const CHAIN_PRICE_IDS: Record<number, string> = {
   56: 'binancecoin',
   137: 'matic-network',
   42161: 'ethereum', // Arbitrum uses ETH
+  [-1]: 'bitcoin',
+  [-2]: 'bitcoin',
 };
 
 let priceCache: { data: Record<string, number>, timestamp: number } | null = null;

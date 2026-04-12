@@ -41,9 +41,11 @@ import { QRCodeSVG } from 'qrcode.react';
 export default function DashboardPage() {
   const router = useRouter();
   const { 
-    address, encryptedWallet, isLocked, chainId, balance, tokenBalances,
+    address, btcSegwitAddress, btcTaprootAddress, solanaAddress, bchAddress, ltcAddress,
+    nearAddress, suiAddress, aptosAddress, cardanoAddress, xrpAddress, tonAddress, tronAddress,
+    encryptedWallet, isLocked, chainId, balance, tokenBalances,
     unlock, lock, updateBalance, setChainId, reset, prices, transactions,
-    addToken, addressBook, networks, removeNetwork
+    addToken, addressBook, networks, removeNetwork, sendBitcoin, sendSolana, sendBitcoinCash, sendLitecoin
   } = useWalletStore();
 
   const [password, setPassword] = useState('');
@@ -84,10 +86,10 @@ export default function DashboardPage() {
   };
 
   const handleCopy = () => {
-    if (address) {
-      navigator.clipboard.writeText(address);
+    if (displayAddress) {
+      navigator.clipboard.writeText(displayAddress);
       setCopied(true);
-      setTimeout(() => setCopied(false), 20000);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -96,10 +98,68 @@ export default function DashboardPage() {
     
     setTxLoading(true);
     setError('');
+    
     try {
+      if (currentChain.type === 'bitcoin') {
+        // Need mnemonic for BTC signing
+        const mnemonic = (decryptedWallet as any).mnemonic?.phrase;
+        if (!mnemonic) {
+          throw new Error('Bitcoin transactions require a mnemonic-based wallet. Private key imports are not supported for BTC yet.');
+        }
+
+        const txHash = await sendBitcoin(recipient, amount, mnemonic, gasPriority as any);
+        setTxHash(txHash);
+        updateBalance();
+        setSendDialogOpen(false);
+        alert(`Bitcoin transaction broadcasted! Hash: ${txHash}`);
+        return;
+      }
+
+      if (currentChain.type === 'solana') {
+        const mnemonic = (decryptedWallet as any).mnemonic?.phrase;
+        if (!mnemonic) {
+          throw new Error('Solana transactions require a mnemonic-based wallet.');
+        }
+
+        const signature = await sendSolana(recipient, amount, mnemonic);
+        setTxHash(signature);
+        updateBalance();
+        setSendDialogOpen(false);
+        alert(`Solana transaction successful! Signature: ${signature}`);
+        return;
+      }
+
+      if (currentChain.type === 'bitcoin-cash') {
+        const mnemonic = (decryptedWallet as any).mnemonic?.phrase;
+        if (!mnemonic) {
+          throw new Error('Bitcoin Cash transactions require a mnemonic-based wallet.');
+        }
+
+        const txid = await sendBitcoinCash(recipient, amount, mnemonic);
+        setTxHash(txid);
+        updateBalance();
+        setSendDialogOpen(false);
+        alert(`BCH transaction successful! TXID: ${txid}`);
+        return;
+      }
+
+      if (currentChain.symbol === 'LTC') {
+        const mnemonic = (decryptedWallet as any).mnemonic?.phrase;
+        if (!mnemonic) {
+          throw new Error('Litecoin transactions require a mnemonic-based wallet.');
+        }
+
+        const txid = await sendLitecoin(recipient, amount, mnemonic);
+        setTxHash(txid);
+        updateBalance();
+        setSendDialogOpen(false);
+        alert(`LTC transaction successful! TXID: ${txid}`);
+        return;
+      }
+
       const { JsonRpcProvider, parseUnits } = await import('ethers');
       const provider = new JsonRpcProvider(currentChain.rpc);
-      const walletWithProvider = decryptedWallet.connect(provider);
+      const walletWithProvider = (decryptedWallet as any).connect(provider);
       
       const tx = await walletWithProvider.sendTransaction({
         to: recipient,
@@ -119,14 +179,24 @@ export default function DashboardPage() {
   };
 
   const currentChain = getChain(chainId);
+  const displayAddress = currentChain.type === 'bitcoin' 
+    ? (currentChain.symbol === 'LTC' ? ltcAddress : (currentChain.bitcoinType === 'segwit' ? btcSegwitAddress : btcTaprootAddress))
+    : (currentChain.type === 'solana' ? solanaAddress : 
+      (currentChain.type === 'bitcoin-cash' ? bchAddress : 
+      (currentChain.symbol === 'NEAR' ? nearAddress :
+      (currentChain.symbol === 'SUI' ? suiAddress :
+      (currentChain.symbol === 'APT' ? aptosAddress :
+      (currentChain.symbol === 'ADA' ? cardanoAddress :
+      (currentChain.symbol === 'XRP' ? xrpAddress :
+      (currentChain.symbol === 'TON' ? tonAddress :
+      (currentChain.symbol === 'TRX' ? tronAddress : address)))))))));
+
   const cgId = CHAIN_PRICE_IDS[chainId];
   const nativePrice = prices[cgId] || 0;
   
   // Calculate total portfolio USD value (native + tokens)
   const nativeUsd = parseFloat(balance) * nativePrice;
   const tokensUsd = tokenBalances.reduce((sum, token) => {
-    // Note: In a real app, you'd fetch prices for each token contract address
-    // For now, we'll use the native price as a placeholder or 0 if not available
     return sum + (parseFloat(token.balance) * 0); // Placeholder for token pricing
   }, 0);
   
@@ -268,6 +338,9 @@ export default function DashboardPage() {
               <ListItemText primary="Manage Networks" sx={{ color: 'primary.main' }} />
             </MenuItem>
           </Menu>
+          <IconButton size="small" onClick={() => router.push('/dashboard/settings')} sx={{ ml: 1 }}>
+            <Settings sx={{ fontSize: 20, color: 'text.muted' }} />
+          </IconButton>
           <IconButton size="small" onClick={lock} sx={{ ml: 1 }}>
             <Logout sx={{ fontSize: 20, color: 'text.muted' }} />
           </IconButton>
@@ -287,7 +360,7 @@ export default function DashboardPage() {
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
           <Typography variant="body2" sx={{ color: 'text.muted', fontFamily: 'monospace' }}>
-            {address?.slice(0, 6)}...{address?.slice(-6)}
+            {displayAddress?.slice(0, 8)}...{displayAddress?.slice(-8)}
           </Typography>
           <IconButton size="small" onClick={handleCopy}>
             {copied ? <CheckCircle sx={{ fontSize: 16, color: 'success.main' }} /> : <CopyAll sx={{ fontSize: 16 }} />}
@@ -379,7 +452,10 @@ export default function DashboardPage() {
                 <ListItemAvatar>
                   <Avatar src={currentChain.logo} />
                 </ListItemAvatar>
-                <ListItemText primary={currentChain.symbol} secondary={currentChain.name} />
+                <ListItemText 
+                  primary={currentChain.symbol} 
+                  secondary={currentChain.bitcoinType ? `Bitcoin ${currentChain.bitcoinType === 'segwit' ? 'SegWit' : 'Taproot'}` : currentChain.name} 
+                />
               </ListItem>
 
               {/* ERC20 Tokens */}
@@ -420,26 +496,29 @@ export default function DashboardPage() {
           <Box sx={{ flex: 1, overflowY: 'auto' }}>
             {transactions.length > 0 ? (
               <List>
-                {transactions.map((tx) => (
-                  <ListItem key={tx.hash} sx={{ px: 1 }}>
-                    <ListItemAvatar>
-                      <Avatar sx={{ bgcolor: tx.from.toLowerCase() === address?.toLowerCase() ? 'rgba(255, 0, 122, 0.1)' : 'rgba(76, 175, 80, 0.1)' }}>
-                        {tx.from.toLowerCase() === address?.toLowerCase() ? 
-                          <NorthEast sx={{ color: 'primary.main', fontSize: 20 }} /> : 
-                          <SouthWest sx={{ color: 'success.main', fontSize: 20 }} />}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText 
-                      primary={tx.from.toLowerCase() === address?.toLowerCase() ? 'Sent' : 'Received'} 
-                      secondary={new Date(parseInt(tx.timeStamp) * 1000).toLocaleDateString()} 
-                    />
-                    <Box textAlign="right">
-                      <Typography variant="body2" fontWeight={700}>
-                        {(parseFloat(tx.value) / 1e18).toFixed(4)} {currentChain.symbol}
-                      </Typography>
-                    </Box>
-                  </ListItem>
-                ))}
+                {transactions.map((tx) => {
+                  const isSent = tx.from.toLowerCase() === displayAddress?.toLowerCase();
+                  return (
+                    <ListItem key={tx.hash} sx={{ px: 1 }}>
+                      <ListItemAvatar>
+                        <Avatar sx={{ bgcolor: isSent ? 'rgba(255, 0, 122, 0.1)' : 'rgba(76, 175, 80, 0.1)' }}>
+                          {isSent ? 
+                            <NorthEast sx={{ color: 'primary.main', fontSize: 20 }} /> : 
+                            <SouthWest sx={{ color: 'success.main', fontSize: 20 }} />}
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText 
+                        primary={isSent ? 'Sent' : 'Received'} 
+                        secondary={new Date(parseInt(tx.timeStamp) * 1000).toLocaleDateString()} 
+                      />
+                      <Box textAlign="right">
+                        <Typography variant="body2" fontWeight={700}>
+                          {parseFloat(tx.value).toFixed(currentChain.type === 'bitcoin' ? 8 : 4)} {currentChain.symbol}
+                        </Typography>
+                      </Box>
+                    </ListItem>
+                  );
+                })}
               </List>
             ) : (
               <Box sx={{ mt: 4, textAlign: 'center', p: 4 }}>
@@ -460,9 +539,11 @@ export default function DashboardPage() {
         <DialogTitle sx={{ textAlign: 'center', fontWeight: 800 }}>Receive {currentChain.symbol}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
           <Box sx={{ p: 2, bgcolor: 'white', borderRadius: 1.5, border: '1px solid', borderColor: 'border', mb: 3 }}>
-            <QRCodeSVG value={address || ''} size={200} />
+            <QRCodeSVG value={displayAddress || ''} size={200} />
           </Box>
-          <Typography variant="caption" sx={{ color: 'text.muted', mb: 1 }}>WALLET ADDRESS</Typography>
+          <Typography variant="caption" sx={{ color: 'text.muted', mb: 1 }}>
+            {currentChain.bitcoinType ? `BITCOIN ${currentChain.bitcoinType.toUpperCase()} ADDRESS` : 'WALLET ADDRESS'}
+          </Typography>
           <Paper 
             onClick={handleCopy}
             sx={{ 
@@ -473,7 +554,7 @@ export default function DashboardPage() {
             }}
           >
             <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>
-              {address}
+              {displayAddress}
             </Typography>
             <CopyAll sx={{ fontSize: 16, color: 'primary.main' }} />
           </Paper>
