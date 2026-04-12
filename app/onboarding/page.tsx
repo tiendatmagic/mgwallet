@@ -35,15 +35,16 @@ export default function OnboardingPage() {
         textAlign: 'center',
         pb: 10
       }}>
-        width: 80, 
-        height: 80, 
-        borderRadius: 1.5, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        mb: 4,
-        overflow: 'hidden'
-      }}>
+        <Box sx={{ 
+          width: 80, 
+          height: 80, 
+          borderRadius: 1.5, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          mb: 4,
+          overflow: 'hidden'
+        }}>
         <img src="/logo.png" alt="MG Wallet Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       </Box>
 
