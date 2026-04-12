@@ -1,22 +1,35 @@
-seed phrase demo: 
+seed phrase demo: wallet A
 flower danger collect shrug cat project bomb flower summer shock lawn element
 
-
 ===
 
-seed phrase demo: 
+seed phrase demo: wallet B
 mad mean monster useful actor universe found wreck fiction like relief skull height search design illegal gloom laundry shield tiny where ivory ranch session
+===
 
+seed phrase demo: wallet C
 
+slot book luggage page cable maid young window swarm hurt dutch prize document year crystal silly meat limb speak chronic basket nature logic speed
+
+===
+seed phrase demo: wallet D
+member assist roast maple private plate anchor like front spider impulse clock
 
 ===
 
-private key demo:
+private key demo: wallet A
 
 77fbdebb304c75b73d73251c902b074277b38cbc7fcb190324dddf1dedb1b51a
 
+private key demo: wallet B
+
+ef8343de78ff95117bbf6d8f18d06a8460c2407c6a49a3d1d2970cf172318f3b
+
+private key demo: wallet C
+
+8b1b312eed02d54d23f8b8d4d159253dbb8cd756b3f4669b6f678af34d97a8d8
 
 
 ===
 
-Password: 12345678 or 87654321
+Password: 12345678 or 87654321 or Password123!456

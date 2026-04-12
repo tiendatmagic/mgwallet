@@ -30,7 +30,8 @@ import {
   SwapHoriz,
   Edit,
   Delete,
-  Add
+  Add,
+  PhonelinkLock
 } from '@mui/icons-material';
 import { getChain, DEFAULT_CHAINS } from '@/lib/blockchain/chains';
 import { QRCodeSVG } from 'qrcode.react';
@@ -63,6 +64,12 @@ export default function DashboardPage() {
   const [txHash, setTxHash] = useState('');
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'assets' | 'activity'>('assets');
+  
+  // Wallet Management State
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [walletToManage, setWalletToManage] = useState<{id: string, name: string} | null>(null);
+  const [newWalletName, setNewWalletName] = useState('');
 
   useEffect(() => {
     if (wallets.length === 0) {
@@ -175,6 +182,25 @@ export default function DashboardPage() {
       setError(e.message || 'Transaction failed');
     } finally {
       setTxLoading(false);
+    }
+  };
+
+  const handleRenameWallet = () => {
+    if (walletToManage && newWalletName.trim()) {
+      useWalletStore.getState().updateWalletName(walletToManage.id, newWalletName.trim());
+      setRenameDialogOpen(false);
+      setWalletToManage(null);
+    }
+  };
+
+  const handleDeleteWallet = () => {
+    if (walletToManage) {
+      const { wallets: currentWallets, removeWallet } = useWalletStore.getState();
+      removeWallet(walletToManage.id);
+      setDeleteDialogOpen(false);
+      setWalletToManage(null);
+      
+      // If no wallets left, router replaces will trigger in useEffect
     }
   };
 
@@ -302,14 +328,60 @@ export default function DashboardPage() {
             key={w.id} 
             selected={activeWalletId === w.id}
             onClick={() => { switchWallet(w.id); setNetworkMenuAnchor(null); }}
-            sx={{ borderRadius: 2, my: 0.5 }}
+            sx={{ 
+              borderRadius: 2, 
+              my: 0.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              pr: 1
+            }}
           >
-            <ListItemAvatar>
-              <Avatar sx={{ bgcolor: activeWalletId === w.id ? 'primary.main' : 'surface', color: activeWalletId === w.id ? 'white' : 'text.primary' }}>
-                <AccountBalanceWallet fontSize="small" />
-              </Avatar>
-            </ListItemAvatar>
-            <ListItemText primary={w.name} secondary="Multi-Coin Wallet" />
+            <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+              <ListItemAvatar>
+                <Avatar sx={{ 
+                  width: 36, height: 36,
+                  bgcolor: activeWalletId === w.id ? 'primary.main' : 'surface', 
+                  color: activeWalletId === w.id ? 'white' : 'text.primary' 
+                }}>
+                  <AccountBalanceWallet sx={{ fontSize: 20 }} />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText 
+                primary={w.name} 
+                secondary="Multi-Coin Wallet" 
+                primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }}
+                secondaryTypographyProps={{ fontSize: '0.7rem' }}
+              />
+            </Box>
+            
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setWalletToManage({ id: w.id, name: w.name });
+                  setNewWalletName(w.name);
+                  setRenameDialogOpen(true);
+                  setNetworkMenuAnchor(null);
+                }}
+              >
+                <Edit sx={{ fontSize: 18 }} />
+              </IconButton>
+              <IconButton 
+                size="small" 
+                color="error"
+                disabled={wallets.length <= 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setWalletToManage({ id: w.id, name: w.name });
+                  setDeleteDialogOpen(true);
+                  setNetworkMenuAnchor(null);
+                }}
+              >
+                <Delete sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Box>
           </MenuItem>
         ))}
         <Divider sx={{ my: 1 }} />
@@ -335,6 +407,12 @@ export default function DashboardPage() {
             deleteIcon={copied ? <CheckCircle sx={{ fontSize: 14, color: 'success.main' }} /> : <CopyAll sx={{ fontSize: 14 }} />}
             sx={{ height: 24, borderRadius: 10, bgcolor: 'surface', fontWeight: 600 }}
           />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1, gap: 0.5 }}>
+          <PhonelinkLock sx={{ fontSize: 12, color: 'success.main' }} />
+          <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Device Locked
+          </Typography>
         </Box>
       </Box>
 
@@ -687,6 +765,64 @@ export default function DashboardPage() {
             sx={{ borderRadius: 3, px: 4 }}
           >
             Import
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rename Wallet Dialog */}
+      <Dialog 
+        open={renameDialogOpen} 
+        onClose={() => setRenameDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 350 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Sửa tên ví</DialogTitle>
+        <DialogContent sx={{ py: 1 }}>
+          <TextField
+            fullWidth
+            autoFocus
+            label="Tên ví mới"
+            variant="outlined"
+            value={newWalletName}
+            onChange={(e) => setNewWalletName(e.target.value)}
+            sx={{ mt: 1 }}
+            InputProps={{ sx: { borderRadius: 2 } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, px: 3 }}>
+          <Button onClick={() => setRenameDialogOpen(false)}>Hủy</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleRenameWallet}
+            disabled={!newWalletName.trim() || newWalletName === walletToManage?.name}
+            sx={{ borderRadius: 2 }}
+          >
+            Lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Wallet Confirmation */}
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={() => setDeleteDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 350 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: 'error.main' }}>Xóa ví?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Bạn có chắc chắn muốn xóa ví <strong>{walletToManage?.name}</strong>? 
+            Hành động này không thể hoàn tác nếu bạn không có Secret Phrase.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, px: 3 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
+          <Button 
+            variant="contained" 
+            color="error" 
+            onClick={handleDeleteWallet}
+            sx={{ borderRadius: 2 }}
+          >
+            Xóa ngay
           </Button>
         </DialogActions>
       </Dialog>

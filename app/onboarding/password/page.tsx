@@ -18,6 +18,7 @@ export default function UniversalPasswordPage() {
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [walletName, setWalletName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [walletInfo, setWalletInfo] = useState<{ type: 'mnemonic' | 'private-key', data: string } | null>(null);
@@ -32,7 +33,11 @@ export default function UniversalPasswordPage() {
       setWalletInfo({ type: 'private-key', data: tempPrivateKey });
     } else {
       router.replace('/');
+      return;
     }
+    
+    // Set default name
+    setWalletName(`Ví chính ${useWalletStore.getState().wallets.length + 1}`);
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,8 +65,11 @@ export default function UniversalPasswordPage() {
         tron: walletData.tronAddress || null,
       };
 
-      const encrypted = await encryptData(JSON.stringify(walletData), password);
-      addWallet(`Ví chính ${useWalletStore.getState().wallets.length + 1}`, encrypted, addresses);
+      const { getDeviceFingerprint } = await import('@/lib/crypto/fingerprint');
+      const fingerprint = await getDeviceFingerprint();
+      
+      const encrypted = await encryptData(JSON.stringify(walletData), password, fingerprint);
+      addWallet(walletName || `Ví chính ${useWalletStore.getState().wallets.length + 1}`, encrypted, addresses);
 
       sessionStorage.removeItem('temp_mnemonic');
       sessionStorage.removeItem('temp_private_key');
@@ -98,12 +106,22 @@ export default function UniversalPasswordPage() {
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" fontWeight={800} gutterBottom>Create Master Password</Typography>
         <Typography variant="body2" sx={{ color: 'text.muted' }}>
-          This password will be used to protect your wallet on this browser.
+          Assign a name to your wallet and set a secure password.
         </Typography>
       </Box>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <TextField
+            fullWidth
+            label="Wallet Name"
+            placeholder="e.g. My Savings Wallet"
+            variant="outlined"
+            value={walletName}
+            onChange={(e) => setWalletName(e.target.value)}
+            InputProps={{ sx: { borderRadius: 3 } }}
+          />
+
           <Box>
             <TextField
               fullWidth

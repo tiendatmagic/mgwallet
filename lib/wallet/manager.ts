@@ -341,20 +341,34 @@ export interface WalletData {
 export async function deriveAllAddresses(data: string, type: 'mnemonic' | 'private-key'): Promise<Partial<WalletData>> {
   if (type === 'mnemonic') {
     const evmWallet = deriveWalletFromMnemonic(data);
-    const btcSegwit = deriveBitcoinAddress(data, 'segwit');
-    const btcTaproot = deriveBitcoinAddress(data, 'taproot');
-    const solana = deriveSolanaAddress(data);
-    const bch = deriveBitcoinCashAddress(data);
-    const ltc = deriveLitecoinAddress(data);
+    
+    let btcSegwit: string | undefined = undefined;
+    let btcTaproot: string | undefined = undefined;
+    let solana: string | undefined = undefined;
+    let bch: string | undefined = undefined;
+    let ltc: string | undefined = undefined;
+    let near: string | undefined = undefined;
+    let sui: string | undefined = undefined;
+    let aptos: string | undefined = undefined;
+    let cardano: string | undefined = undefined;
+    let xrp: string | undefined = undefined;
+    let ton: string | undefined = undefined;
+    let tron: string | undefined = undefined;
+
+    try { btcSegwit = deriveBitcoinAddress(data, 'segwit'); } catch (e) { console.error('BTC SegWit derivation failed:', e); }
+    try { btcTaproot = deriveBitcoinAddress(data, 'taproot'); } catch (e) { console.error('BTC Taproot derivation failed:', e); }
+    try { solana = deriveSolanaAddress(data); } catch (e) { console.error('Solana derivation failed:', e); }
+    try { bch = deriveBitcoinCashAddress(data); } catch (e) { console.error('BCH derivation failed:', e); }
+    try { ltc = deriveLitecoinAddress(data); } catch (e) { console.error('LTC derivation failed:', e); }
     
     // Async derivations
-    const near = await deriveNearAddress(data);
-    const sui = await deriveSuiAddress(data);
-    const aptos = await deriveAptosAddress(data);
-    const cardano = await deriveCardanoAddress(data);
-    const xrp = await deriveRippleAddress(data);
-    const ton = await deriveTonAddress(data);
-    const tron = await deriveTronAddress(data);
+    try { near = await deriveNearAddress(data); } catch (e) { console.error('NEAR derivation failed:', e); }
+    try { sui = await deriveSuiAddress(data); } catch (e) { console.error('Sui derivation failed:', e); }
+    try { aptos = await deriveAptosAddress(data); } catch (e) { console.error('Aptos derivation failed:', e); }
+    try { cardano = await deriveCardanoAddress(data); } catch (e) { console.error('Cardano derivation failed:', e); }
+    try { xrp = await deriveRippleAddress(data); } catch (e) { console.error('XRP derivation failed:', e); }
+    try { ton = await deriveTonAddress(data); } catch (e) { console.error('TON derivation failed:', e); }
+    try { tron = await deriveTronAddress(data); } catch (e) { console.error('TRON derivation failed:', e); }
 
     return {
       type: 'mnemonic',

@@ -11,13 +11,16 @@ const SALT_SIZE = 16;
 const IV_SIZE = 12;
 
 /**
- * Derives a cryptographic key from a password
+ * Derives a cryptographic key from a password and optional device fingerprint
  */
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(password: string, salt: Uint8Array, fingerprint: string = ''): Promise<CryptoKey> {
   const enc = new TextEncoder();
+  // Combine password and fingerprint for the base key
+  const combinedSecret = password + fingerprint;
+  
   const baseKey = await crypto.subtle.importKey(
     'raw',
-    enc.encode(password),
+    enc.encode(combinedSecret),
     { name: 'PBKDF2' },
     false,
     ['deriveBits', 'deriveKey']
@@ -38,13 +41,13 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
 }
 
 /**
- * Encrypts a string using a password
+ * Encrypts a string using a password and optional fingerprint
  * Returns a base64 string containing: salt (16 bytes) + iv (12 bytes) + ciphertext
  */
-export async function encryptData(data: string, password: string): Promise<string> {
+export async function encryptData(data: string, password: string, fingerprint: string = ''): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(SALT_SIZE));
   const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
-  const key = await deriveKey(password, salt);
+  const key = await deriveKey(password, salt, fingerprint);
   
   const enc = new TextEncoder();
   const encrypted = await crypto.subtle.encrypt(
@@ -63,9 +66,9 @@ export async function encryptData(data: string, password: string): Promise<strin
 }
 
 /**
- * Decrypts a base64 string using a password
+ * Decrypts a base64 string using a password and optional fingerprint
  */
-export async function decryptData(encryptedBase64: string, password: string): Promise<string> {
+export async function decryptData(encryptedBase64: string, password: string, fingerprint: string = ''): Promise<string> {
   try {
     const encryptedData = new Uint8Array(
       atob(encryptedBase64).split('').map((c) => c.charCodeAt(0))
@@ -75,7 +78,7 @@ export async function decryptData(encryptedBase64: string, password: string): Pr
     const iv = encryptedData.slice(SALT_SIZE, SALT_SIZE + IV_SIZE);
     const ciphertext = encryptedData.slice(SALT_SIZE + IV_SIZE);
 
-    const key = await deriveKey(password, salt);
+    const key = await deriveKey(password, salt, fingerprint);
     const decrypted = await crypto.subtle.decrypt(
       { name: ENC_ALGO, iv: iv },
       key,

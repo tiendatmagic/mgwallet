@@ -73,6 +73,7 @@ interface WalletStore {
   updateNetwork: (chainId: number, chain: Partial<Chain>) => void;
   removeNetwork: (chainId: number) => void;
   resetNetworks: () => void;
+  updateWalletName: (walletId: string, name: string) => void;
   upsertContact: (name: string, address: string) => void;
   sendBitcoin: (recipient: string, amountBtc: string, mnemonic: string, feePriority?: 'slow' | 'average' | 'fast') => Promise<string>;
   sendSolana: (recipient: string, amountSol: string, mnemonic: string) => Promise<string>;
@@ -132,7 +133,10 @@ export const useWalletStore = create<WalletStore>()(
         if (!walletAccount) return false;
 
         try {
-          const decryptedData = await decryptData(walletAccount.encryptedMnemonic, password);
+          const { getDeviceFingerprint } = await import('@/lib/crypto/fingerprint');
+          const fingerprint = await getDeviceFingerprint();
+          
+          const decryptedData = await decryptData(walletAccount.encryptedMnemonic, password, fingerprint);
           const walletData: WalletData = JSON.parse(decryptedData);
           
           let wallet: Wallet | HDNodeWallet;
@@ -182,6 +186,12 @@ export const useWalletStore = create<WalletStore>()(
             isLocked: state.activeWalletId === walletId ? true : state.isLocked
           };
         });
+      },
+
+      updateWalletName: (walletId, name) => {
+        set((state) => ({
+          wallets: state.wallets.map(w => w.id === walletId ? { ...w, name } : w)
+        }));
       },
 
       updateBalance: async () => {
@@ -360,10 +370,12 @@ export const useWalletStore = create<WalletStore>()(
 
         try {
           const { encryptData } = await import('@/lib/crypto/encryption');
+          const { getDeviceFingerprint } = await import('@/lib/crypto/fingerprint');
+          const fingerprint = await getDeviceFingerprint();
           
           const updatedWallets = await Promise.all(wallets.map(async (w) => {
-            const decryptedData = await decryptData(w.encryptedMnemonic, oldPassword);
-            const newEncryptedMnemonic = await encryptData(decryptedData, newPassword);
+            const decryptedData = await decryptData(w.encryptedMnemonic, oldPassword, fingerprint);
+            const newEncryptedMnemonic = await encryptData(decryptedData, newPassword, fingerprint);
             return { ...w, encryptedMnemonic: newEncryptedMnemonic };
           }));
           
