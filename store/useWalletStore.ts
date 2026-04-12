@@ -55,6 +55,9 @@ interface WalletStore {
   customTokens: Token[];
   networks: Chain[];
   addressBook: Record<string, string>; // name -> address
+  isBiometricEnabled: boolean;
+  biometricCredentialId: string | null;
+  biometricEncryptedPassword: string | null;
   
   // Actions
   setChainId: (chainId: number) => void;
@@ -74,6 +77,9 @@ interface WalletStore {
   removeNetwork: (chainId: number) => void;
   resetNetworks: () => void;
   updateWalletName: (walletId: string, name: string) => void;
+  enableBiometric: (password: string) => Promise<boolean>;
+  disableBiometric: () => void;
+  unlockWithBiometric: () => Promise<boolean>;
   upsertContact: (name: string, address: string) => void;
   sendBitcoin: (recipient: string, amountBtc: string, mnemonic: string, feePriority?: 'slow' | 'average' | 'fast') => Promise<string>;
   sendSolana: (recipient: string, amountSol: string, mnemonic: string) => Promise<string>;
@@ -100,6 +106,9 @@ export const useWalletStore = create<WalletStore>()(
       customTokens: [],
       networks: Object.values(DEFAULT_CHAINS),
       addressBook: {},
+      isBiometricEnabled: false,
+      biometricCredentialId: null,
+      biometricEncryptedPassword: null,
 
       setChainId: (chainId: number) => {
         set({ chainId });
@@ -192,6 +201,75 @@ export const useWalletStore = create<WalletStore>()(
         set((state) => ({
           wallets: state.wallets.map(w => w.id === walletId ? { ...w, name } : w)
         }));
+      },
+
+      enableBiometric: async (password: string) => {
+        try {
+          const { registerBiometric, deriveKeyFromPrf } = await import('@/lib/crypto/webauthn');
+          const result = await registerBiometric('MG Wallet User');
+          if (!result) return false;
+
+          const aesKey = await deriveKeyFromPrf(result.prfSecret);
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const encodedPassword = new TextEncoder().encode(password);
+          
+          const encryptedBuffer = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            aesKey,
+            encodedPassword
+          );
+
+          const encryptedArray = new Uint8Array(encryptedBuffer);
+          const packed = new Uint8Array(iv.length + encryptedArray.length);
+          packed.set(iv, 0);
+          packed.set(encryptedArray, iv.length);
+
+          set({
+            isBiometricEnabled: true,
+            biometricCredentialId: result.credentialId,
+            biometricEncryptedPassword: btoa(String.fromCharCode(...packed))
+          });
+          return true;
+        } catch (e) {
+          console.error("Enable biometric failed:", e);
+          return false;
+        }
+      },
+
+      disableBiometric: () => {
+        set({
+          isBiometricEnabled: false,
+          biometricCredentialId: null,
+          biometricEncryptedPassword: null
+        });
+      },
+
+      unlockWithBiometric: async () => {
+        const { isBiometricEnabled, biometricCredentialId, biometricEncryptedPassword } = get();
+        if (!isBiometricEnabled || !biometricCredentialId || !biometricEncryptedPassword) return false;
+
+        try {
+          const { authenticateBiometric, deriveKeyFromPrf } = await import('@/lib/crypto/webauthn');
+          const prfSecret = await authenticateBiometric(biometricCredentialId);
+          if (!prfSecret) return false;
+
+          const aesKey = await deriveKeyFromPrf(prfSecret);
+          const packed = new Uint8Array(atob(biometricEncryptedPassword).split("").map(c => c.charCodeAt(0)));
+          const iv = packed.slice(0, 12);
+          const ciphertext = packed.slice(12);
+
+          const decryptedBuffer = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv },
+            aesKey,
+            ciphertext
+          );
+
+          const password = new TextDecoder().decode(decryptedBuffer);
+          return await get().unlock(password);
+        } catch (e) {
+          console.error("Biometric unlock failed:", e);
+          return false;
+        }
       },
 
       updateBalance: async () => {
@@ -681,6 +759,9 @@ export const useWalletStore = create<WalletStore>()(
         customTokens: state.customTokens,
         networks: state.networks,
         addressBook: state.addressBook,
+        isBiometricEnabled: state.isBiometricEnabled,
+        biometricCredentialId: state.biometricCredentialId,
+        biometricEncryptedPassword: state.biometricEncryptedPassword,
       }),
     }
   )

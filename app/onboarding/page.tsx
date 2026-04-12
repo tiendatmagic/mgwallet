@@ -35,18 +35,18 @@ export default function OnboardingPage() {
         textAlign: 'center',
         pb: 10
       }}>
-        <Box className="gradient-bg" sx={{ 
-          width: 80, 
-          height: 80, 
-          borderRadius: 4, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          mb: 4,
-          boxShadow: '0 8px 20px rgba(255, 0, 122, 0.2)'
-        }}>
-          <AccountBalanceWallet sx={{ fontSize: 40, color: 'white' }} />
-        </Box>
+      <Box sx={{ 
+        width: 80, 
+        height: 80, 
+        borderRadius: 4, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        mb: 4,
+        overflow: 'hidden'
+      }}>
+        <img src="/logo.png" alt="MG Wallet Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      </Box>
 
         <Typography variant="h4" fontWeight={800} gutterBottom>
           New Wallet

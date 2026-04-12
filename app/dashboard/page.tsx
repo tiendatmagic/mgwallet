@@ -31,7 +31,8 @@ import {
   Edit,
   Delete,
   Add,
-  PhonelinkLock
+  PhonelinkLock,
+  Fingerprint
 } from '@mui/icons-material';
 import { getChain, DEFAULT_CHAINS } from '@/lib/blockchain/chains';
 import { QRCodeSVG } from 'qrcode.react';
@@ -90,6 +91,22 @@ export default function DashboardPage() {
       setError('Incorrect password');
     }
     setUnlockLoading(false);
+  };
+
+  const handleBiometricUnlock = async () => {
+    setUnlockLoading(true);
+    setError('');
+    try {
+      const { unlockWithBiometric } = useWalletStore.getState();
+      const success = await unlockWithBiometric();
+      if (!success) {
+        setError('Xác thực thất bại');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Xác thực thất bại');
+    } finally {
+      setUnlockLoading(false);
+    }
   };
 
   const handleCopy = () => {
@@ -270,6 +287,20 @@ export default function DashboardPage() {
           >
             {unlockLoading ? <CircularProgress size={24} color="inherit" /> : 'Unlock'}
           </Button>
+
+          {useWalletStore.getState().isBiometricEnabled && (
+            <Button
+              variant="outlined"
+              fullWidth
+              size="large"
+              onClick={handleBiometricUnlock}
+              disabled={unlockLoading}
+              startIcon={<Fingerprint />}
+              sx={{ py: 2, borderRadius: 1.5, mt: 2, fontSize: '1.1rem' }}
+            >
+              Mở khóa bằng vân tay/PIN
+            </Button>
+          )}
         </form>
 
         <Box sx={{ mt: 'auto', textAlign: 'center' }}>
@@ -341,10 +372,9 @@ export default function DashboardPage() {
               <ListItemAvatar>
                 <Avatar sx={{ 
                   width: 36, height: 36,
-                  bgcolor: activeWalletId === w.id ? 'primary.main' : 'surface', 
-                  color: activeWalletId === w.id ? 'white' : 'text.primary' 
+                  bgcolor: 'transparent'
                 }}>
-                  <AccountBalanceWallet sx={{ fontSize: 20 }} />
+                  <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </Avatar>
               </ListItemAvatar>
               <ListItemText 

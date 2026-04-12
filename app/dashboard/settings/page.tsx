@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWalletStore } from '@/store/useWalletStore';
 import { 
-  Box, Typography, IconButton, Paper, 
+  Box, Typography, IconButton, Paper, Avatar,
   List, ListItem, ListItemText, ListItemIcon, ListItemButton,
   Divider, Dialog, DialogTitle, DialogContent, 
   DialogActions, TextField, Button, CircularProgress, 
@@ -20,7 +20,9 @@ import {
   VisibilityOff,
   ContentCopy,
   CheckCircle,
-  AccountBalanceWallet
+  AccountBalanceWallet,
+  Fingerprint,
+  FingerprintOutlined
 } from '@mui/icons-material';
 import { decryptData } from '@/lib/crypto/encryption';
 import { WalletData, deriveBitcoinKeyPair, exportPrivateKeyWIF, deriveSolanaKeyPair, exportSolanaPrivateKey, deriveBitcoinCashKeyPair } from '@/lib/wallet/manager';
@@ -45,6 +47,10 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Biometric States
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricDialogOpen, setBiometricDialogOpen] = useState(false);
 
   // Reveal States
   const [revealType, setRevealType] = useState<'mnemonic' | 'privateKey' | null>(null);
@@ -59,6 +65,12 @@ export default function SettingsPage() {
     if (wallets.length === 0) {
       router.replace('/');
     }
+
+    const checkSupport = async () => {
+      const { checkBiometricSupport } = await import('@/lib/crypto/webauthn');
+      setBiometricSupported(await checkBiometricSupport());
+    };
+    checkSupport();
   }, [wallets.length, router]);
 
   if (wallets.length === 0) {
@@ -128,6 +140,26 @@ export default function SettingsPage() {
       setLoading(false);
     }
   };
+
+  const handleEnableBiometric = async () => {
+    setLoading(true);
+    setError('');
+    const { enableBiometric } = useWalletStore.getState();
+    const success = await enableBiometric(password);
+    if (success) {
+      setSuccess('Biometric/OS lock enabled successfully!');
+      setTimeout(() => {
+        setBiometricDialogOpen(false);
+        setSuccess('');
+        setPassword('');
+      }, 2000);
+    } else {
+      setError('Biometric setup failed. Make sure your device supports it and try again.');
+    }
+    setLoading(false);
+  };
+
+  const { isBiometricEnabled, disableBiometric } = useWalletStore();
 
   const handleNetworkChange = async (
     event: React.MouseEvent<HTMLElement>,
@@ -206,7 +238,9 @@ export default function SettingsPage() {
             <ListItem disablePadding>
               <ListItemButton onClick={() => router.push('/onboarding')} sx={{ py: 1.5 }}>
                 <ListItemIcon>
-                   <AccountBalanceWallet color="primary" />
+                   <Avatar sx={{ width: 24, height: 24, bgcolor: 'transparent' }}>
+                     <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                   </Avatar>
                 </ListItemIcon>
                 <ListItemText 
                   primary="Ví" 
@@ -282,6 +316,33 @@ export default function SettingsPage() {
                 />
                 <ChevronRight sx={{ color: 'text.muted' }} />
               </ListItemButton>
+            </ListItem>
+
+            <Divider variant="middle" />
+            <ListItem sx={{ py: 1.5 }}>
+              <ListItemIcon>
+                <Fingerprint color="primary" />
+              </ListItemIcon>
+              <Box sx={{ flex: 1 }}>
+                <ListItemText 
+                  primary="Khóa bằng vân tay/PIN (OS)" 
+                  secondary={biometricSupported 
+                    ? "Sử dụng bảo mật hệ điều hành để mở khóa ví" 
+                    : "Trình duyệt hoặc thiết bị này không hỗ trợ khóa vân tay/PIN"} 
+                />
+              </Box>
+              <Switch 
+                disabled={!biometricSupported}
+                checked={isBiometricEnabled} 
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    resetForm();
+                    setBiometricDialogOpen(true);
+                  } else {
+                    disableBiometric();
+                  }
+                }} 
+              />
             </ListItem>
           </List>
         </Paper>
@@ -499,6 +560,53 @@ export default function SettingsPage() {
           <Button fullWidth variant="contained" onClick={() => setRevealDialogOpen(false)} sx={{ borderRadius: 1.5 }}>
             Done
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Biometric Setup Dialog */}
+      <Dialog 
+        open={biometricDialogOpen} 
+        onClose={() => !loading && setBiometricDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 380 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Enable Biometric Lock</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          {success ? (
+            <Alert severity="success" sx={{ borderRadius: 2 }}>
+              {success}
+            </Alert>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                Để kích hoạt bảo mật hệ điều hành, vui lòng xác nhận mật khẩu ví của bạn.
+              </Typography>
+              <TextField
+                fullWidth
+                type="password"
+                label="Mật khẩu của bạn"
+                variant="outlined"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={!!error}
+                helperText={error}
+                InputProps={{ sx: { borderRadius: 1.5 } }}
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={() => setBiometricDialogOpen(false)} disabled={loading}>Hủy</Button>
+          {!success && (
+            <Button 
+              variant="contained" 
+              onClick={handleEnableBiometric}
+              disabled={loading || !password}
+              startIcon={loading ? <CircularProgress size={20} /> : <Fingerprint />}
+              sx={{ borderRadius: 1.5, px: 3 }}
+            >
+              Thiết lập
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

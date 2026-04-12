@@ -42,17 +42,17 @@ export default function MainPage() {
       textAlign: 'center',
       gap: 6
     }}>
-      <Box className="gradient-bg" sx={{ 
+      <Box sx={{ 
         width: 100, 
         height: 100, 
         borderRadius: 2, 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        boxShadow: '0 10px 30px rgba(255, 0, 122, 0.4)',
-        mb: 2
+        mb: 2,
+        overflow: 'hidden'
       }}>
-        <AccountBalanceWallet sx={{ fontSize: 60, color: 'white' }} />
+        <img src="/logo.png" alt="MG Wallet Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       </Box>
 
       <Box>
