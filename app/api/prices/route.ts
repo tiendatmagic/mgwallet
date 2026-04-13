@@ -10,7 +10,6 @@ export async function GET(req: NextRequest) {
   const platformIdParam = searchParams.get('platform_id') || searchParams.get('platformId');
   const addresses = searchParams.get('addresses') || searchParams.get('contract_addresses');
 
-  console.log(`[API Price Proxy] Request: type=${type}, chainId=${chainId}, platformId=${platformIdParam}, addresses=${addresses}`);
 
   try {
     if (type === 'native') {
@@ -39,7 +38,6 @@ export async function GET(req: NextRequest) {
       }
 
       const cgUrl = `${COINGECKO_API_BASE}/simple/token_price/${platformId}?contract_addresses=${addresses}&vs_currencies=usd`;
-      console.log(`[API Price Proxy] External Fetching: ${cgUrl}`);
       
       try {
         const response = await fetch(cgUrl, { 
@@ -54,7 +52,6 @@ export async function GET(req: NextRequest) {
         }
 
         const data = await response.json();
-        console.log(`[API Price Proxy] External Success. Data keys:`, Object.keys(data));
         return NextResponse.json(data);
       } catch (err: any) {
         console.error(`[API Price Proxy] Fetch exception:`, err.message);
