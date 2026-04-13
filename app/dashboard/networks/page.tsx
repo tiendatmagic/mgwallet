@@ -126,7 +126,10 @@ export default function ManageNetworksPage() {
               >
                 <ListItemButton 
                   selected={chainId === chain.id}
-                  onClick={() => setChainId(chain.id)}
+                  onClick={() => {
+                    setChainId(chain.id);
+                    router.push('/dashboard');
+                  }}
                   sx={{ py: 1.5 }}
                 >
                   <ListItemAvatar>

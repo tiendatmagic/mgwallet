@@ -5,11 +5,12 @@ import { Chain, getChain, DEFAULT_CHAINS, DEFAULT_CHAIN_ID } from '@/lib/blockch
 import { WalletData } from '@/lib/wallet/manager';
 import { decryptData } from '@/lib/crypto/encryption';
 import { POPULAR_TOKENS, Token, fetchTokenBalance } from '@/lib/blockchain/tokens';
-import { fetchLivePrices, CHAIN_PRICE_IDS } from '@/lib/blockchain/prices';
+import { fetchLivePrices, CHAIN_PRICE_IDS, fetchTokenPricesByAddress } from '@/lib/blockchain/prices';
 import { getTransactionHistory, Transaction } from '@/lib/blockchain/explorer';
 
 interface TokenBalance extends Token {
   balance: string;
+  price: number;
   usdValue: number;
   isVisible: boolean;
 }
@@ -351,14 +352,38 @@ export const useWalletStore = create<WalletStore>()(
             ...customTokens.filter(t => t.chainId === chainId)
           ];
 
+          const tokenAddresses = tokensToFetch.map(t => t.address);
+          const coingeckoIds = tokensToFetch.map(t => t.coingeckoId).filter(Boolean) as string[];
+          
+          // 1. Fetch all prices (Native + Tokens with IDs) in one go
+          const allPrices = await fetchLivePrices(coingeckoIds);
+          
+          // 2. Identify tokens that don't have a coingeckoId - these must be fetched by address
+          const tokensByAddress = tokensToFetch.filter(t => !t.coingeckoId);
+          let addressPrices: Record<string, number> = {};
+          
+          if (tokensByAddress.length > 0) {
+            addressPrices = await fetchTokenPricesByAddress(chainId, tokensByAddress.map(t => t.address));
+          }
+
           const tokenBals: TokenBalance[] = await Promise.all(
             tokensToFetch.map(async (token) => {
               const isVisible = !hiddenTokens.includes(`${chainId}:${token.address}`);
               try {
                 const { balance } = await fetchTokenBalance(chain.rpc, token.address, evm, chainId);
-                return { ...token, balance, usdValue: 0, isVisible };
+                
+                // Get price from either ID-based fetch or address-based fetch
+                let price = 0;
+                if (token.coingeckoId && allPrices[token.coingeckoId]) {
+                  price = allPrices[token.coingeckoId];
+                } else {
+                  price = addressPrices[token.address.toLowerCase()] || 0;
+                }
+                
+                const usdValue = parseFloat(balance) * price;
+                return { ...token, balance, price, usdValue, isVisible };
               } catch (e) {
-                return { ...token, balance: '0', usdValue: 0, isVisible };
+                return { ...token, balance: '0', price: 0, usdValue: 0, isVisible };
               }
             })
           );

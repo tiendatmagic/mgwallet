@@ -72,7 +72,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [mounted, storeTheme]);
 
   if (!mounted) {
-    return <Box sx={{ flex: 1, bgcolor: storeTheme === 'dark' ? '#111111' : '#FFFFFF' }} />;
+    return <div style={{ flex: 1, backgroundColor: '#FFFFFF', minHeight: '100vh' }} />;
   }
 
   return (

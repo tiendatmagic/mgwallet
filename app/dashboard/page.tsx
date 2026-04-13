@@ -248,7 +248,7 @@ export default function DashboardPage() {
   // Calculate total portfolio USD value (native + tokens)
   const nativeUsd = parseFloat(balance) * nativePrice;
   const tokensUsd = tokenBalances.reduce((sum, token) => {
-    return sum + (parseFloat(token.balance) * 0); // Placeholder for token pricing
+    return sum + token.usdValue;
   }, 0);
   
   const portfolioUsd = (nativeUsd + tokensUsd).toFixed(2);
@@ -553,7 +553,7 @@ export default function DashboardPage() {
                   secondaryAction={
                     <Box textAlign="right">
                       <Typography fontWeight={700}>{parseFloat(token.balance).toFixed(4)} {token.symbol}</Typography>
-                      <Typography variant="caption" color="text.muted">$0.00</Typography>
+                      <Typography variant="caption" color="text.muted">${token.usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                     </Box>
                   }
                 >
@@ -589,7 +589,7 @@ export default function DashboardPage() {
                       })()}
                     </Box>
                   </ListItemAvatar>
-                  <ListItemText primary={token.symbol} secondary={`$0.00`} />
+                  <ListItemText primary={token.symbol} secondary={`$${token.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}`} />
                 </ListItem>
               ))}
             </List>
