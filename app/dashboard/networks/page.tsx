@@ -109,8 +109,14 @@ export default function ManageNetworksPage() {
         </Box>
         
         <List sx={{ mb: 4 }}>
-          {/* Ensure All Networks is always at the top if it exists in networks */}
-          {[...networks].sort((a, b) => (a.id === ALL_NETWORKS_ID ? -1 : b.id === ALL_NETWORKS_ID ? 1 : 0)).map((chain) => (
+          {/* Ensure All Networks is always present and at the top */}
+          {(() => {
+             const baseNetworks = [...networks];
+             if (!baseNetworks.find(n => n.id === ALL_NETWORKS_ID)) {
+               baseNetworks.push(DEFAULT_CHAINS[ALL_NETWORKS_ID]);
+             }
+             return baseNetworks.sort((a, b) => (a.id === ALL_NETWORKS_ID ? -1 : b.id === ALL_NETWORKS_ID ? 1 : 0));
+          })().map((chain) => (
             <Paper key={chain.id} sx={{ mb: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'border', overflow: 'hidden' }}>
               <ListItem 
                 disablePadding

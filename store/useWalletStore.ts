@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { JsonRpcProvider, formatEther, Wallet, HDNodeWallet, Contract, parseUnits } from 'ethers';
-import { Chain, getChain, DEFAULT_CHAINS, DEFAULT_CHAIN_ID } from '@/lib/blockchain/chains';
+import { Chain, getChain, DEFAULT_CHAINS, DEFAULT_CHAIN_ID, ALL_NETWORKS_ID } from '@/lib/blockchain/chains';
 import { WalletData } from '@/lib/wallet/manager';
 import { decryptData } from '@/lib/crypto/encryption';
 import { POPULAR_TOKENS, Token, fetchTokenBalance } from '@/lib/blockchain/tokens';
@@ -821,7 +821,7 @@ export const useWalletStore = create<WalletStore>()(
     {
       name: 'mgwallet-store',
       storage: createJSONStorage(() => localStorage),
-      version: 5,
+      version: 6,
       migrate: (persistedState: any, version: number) => {
         let state = persistedState;
 
@@ -879,6 +879,17 @@ export const useWalletStore = create<WalletStore>()(
             delete state.tonAddress;
             delete state.tronAddress;
           }
+        }
+        if (version < 6) {
+          const defaults = Object.values(DEFAULT_CHAINS);
+          const current = state.networks || [];
+          const missing = defaults.filter((d: any) => !current.find((n: any) => n.id === d.id));
+          
+          state = {
+            ...state,
+            networks: [...current, ...missing],
+            chainId: ALL_NETWORKS_ID
+          };
         }
         return state;
       },
