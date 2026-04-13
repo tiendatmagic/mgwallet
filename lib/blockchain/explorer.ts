@@ -36,6 +36,7 @@ const PUBLIC_API_KEYS: Record<number, string> = {
 export async function getTransactionHistory(
   address: string,
   chainId: number,
+  tokenAddress?: string,
   limit: number = 20
 ): Promise<Transaction[]> {
   const apiBase = EXPLORER_APIS[chainId];
@@ -44,7 +45,10 @@ export async function getTransactionHistory(
   // Note: For a production app, use process.env.API_KEY
   const apiKey = PUBLIC_API_KEYS[chainId];
   
-  const url = `${apiBase}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=${limit}&sort=desc&apikey=${apiKey}`;
+  const action = tokenAddress && tokenAddress !== 'native' ? 'tokentx' : 'txlist';
+  const tokenParam = tokenAddress && tokenAddress !== 'native' ? `&contractaddress=${tokenAddress}` : '';
+  
+  const url = `${apiBase}?module=account&action=${action}&address=${address}${tokenParam}&startblock=0&endblock=99999999&page=1&offset=${limit}&sort=desc&apikey=${apiKey}`;
 
   try {
     const response = await fetch(url);
@@ -60,12 +64,15 @@ export async function getTransactionHistory(
       hash: tx.hash,
       from: tx.from,
       to: tx.to,
-      value: tx.value,
+      value: tx.tokenDecimal ? (BigInt(tx.value) / BigInt(10 ** parseInt(tx.tokenDecimal))).toString() : tx.value,
       timeStamp: tx.timeStamp,
       isError: tx.isError,
+      tokenSymbol: tx.tokenSymbol,
+      tokenName: tx.tokenName,
     }));
   } catch (error) {
     console.error('Failed to fetch transaction history:', error);
     return [];
   }
 }
+

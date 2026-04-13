@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Box, Typography, IconButton, Paper, 
   Avatar, Button, TextField, CircularProgress, 
@@ -49,6 +49,9 @@ export default function SwapPage() {
   const [tokenSelectorOpen, setTokenSelectorOpen] = useState(false);
   const [selectorTarget, setSelectorTarget] = useState<'from' | 'to'>('from');
 
+  const searchParams = useSearchParams();
+  const initialFromTokenAddress = searchParams.get('fromTokenAddress');
+
   // Initialize tokens
   useEffect(() => {
     const native: Token = {
@@ -59,13 +62,26 @@ export default function SwapPage() {
       logo: currentChain.logo,
       chainId
     };
-    setFromToken(native);
     
     const tokens = POPULAR_TOKENS[chainId] || [];
+    const customTokens = useWalletStore.getState().customTokens.filter(t => t.chainId === chainId);
+    const allAvailable = [native, ...tokens, ...customTokens];
+
+    if (initialFromTokenAddress) {
+      const found = allAvailable.find(t => t.address.toLowerCase() === initialFromTokenAddress.toLowerCase());
+      if (found) {
+        setFromToken(found);
+      } else {
+        setFromToken(native);
+      }
+    } else {
+      setFromToken(native);
+    }
+    
     if (tokens.length > 0) {
       setToToken(tokens[0]);
     }
-  }, [chainId, currentChain]);
+  }, [chainId, currentChain, initialFromTokenAddress]);
 
   // Fetch Quote
   const getQuote = useCallback(async (amount: string) => {

@@ -71,7 +71,7 @@ interface WalletStore {
   removeWallet: (walletId: string) => void;
   updateBalance: () => Promise<void>;
   updatePrices: () => Promise<void>;
-  updateTransactions: () => Promise<void>;
+  updateTransactions: (tokenAddress?: string) => Promise<void>;
   addToken: (token: Token) => void;
   addNetwork: (chain: Chain) => void;
   updateNetwork: (chainId: number, chain: Partial<Chain>) => void;
@@ -482,7 +482,7 @@ export const useWalletStore = create<WalletStore>()(
         }
       },
 
-      updateTransactions: async () => {
+      updateTransactions: async (tokenAddress?: string) => {
         const { activeWalletId, wallets, chainId } = get();
         const activeWallet = wallets.find(w => w.id === activeWalletId);
         if (!activeWallet) return;
@@ -520,7 +520,7 @@ export const useWalletStore = create<WalletStore>()(
           }
 
           if (chain.type === 'evm') {
-            const txs = await getTransactionHistory(evm, chainId);
+            const txs = await getTransactionHistory(evm, chainId, tokenAddress);
             set({ transactions: txs });
           } else {
             set({ transactions: [] });

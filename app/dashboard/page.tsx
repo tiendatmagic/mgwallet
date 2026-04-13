@@ -9,7 +9,7 @@ import {
   Avatar, CircularProgress, TextField, InputAdornment, 
   Stack, Divider, List, ListItem, ListItemAvatar, ListItemText,
   Badge, Menu, MenuItem, Dialog, DialogTitle, DialogContent, 
-  DialogActions, Tooltip, ToggleButton, ToggleButtonGroup, Chip
+  DialogActions, Tooltip, ToggleButton, ToggleButtonGroup, Chip, ListItemButton
 } from '@mui/material';
 import { 
   LockOutlined, 
@@ -77,6 +77,23 @@ export default function DashboardPage() {
       router.replace('/');
     } else if (!isLocked) {
       updateBalance();
+      
+      // Handle URL params for quick actions
+      const searchParams = new URLSearchParams(window.location.search);
+      const action = searchParams.get('action');
+      const tokenAddress = searchParams.get('token');
+      const tokenChainId = searchParams.get('chainId');
+      
+      if (action === 'send') {
+        if (tokenChainId) {
+          const cid = parseInt(tokenChainId);
+          if (cid !== chainId) {
+            setChainId(cid);
+          }
+        }
+        setSendDialogOpen(true);
+        // Pre-filling other state if needed (e.g. if we had a token selector state)
+      }
     }
   }, [wallets.length, isLocked, router, updateBalance]);
 
@@ -528,91 +545,102 @@ export default function DashboardPage() {
               {/* Native Asset (only shown for single chain) */}
               {chainId !== ALL_NETWORKS_ID && (
                 <ListItem 
-                  sx={{ px: 1, borderRadius: 1.5, '&:hover': { bgcolor: 'surface' } }}
+                  disablePadding
+                  sx={{ borderRadius: 1.5, mb: 1, '&:hover': { bgcolor: 'surface' } }}
                   secondaryAction={
-                    <Box textAlign="right">
+                    <Box textAlign="right" sx={{ pointerEvents: 'none' }}>
                       <Typography fontWeight={700}>{parseFloat(balance).toFixed(4)} {currentChain.symbol}</Typography>
                       <Typography variant="caption" color="text.muted">${nativeUsd.toFixed(2)}</Typography>
                     </Box>
                   }
                 >
-                  <ListItemAvatar>
-                    {(() => {
-                      const defaultChain = DEFAULT_CHAINS[currentChain.id];
-                      const logoSrc = defaultChain?.logo || currentChain.logo;
-                      return (
-                        <Avatar src={logoSrc}>
-                          {currentChain.symbol[0]}
-                        </Avatar>
-                      );
-                    })()}
-                  </ListItemAvatar>
-                  <ListItemText 
-                    primary={currentChain.name} 
-                    secondary={`$${nativePrice.toLocaleString()}`} 
-                  />
+                  <ListItemButton 
+                    onClick={() => router.push(`/dashboard/asset/${currentChain.id}/native`)}
+                    sx={{ borderRadius: 1.5, py: 1.5 }}
+                  >
+                    <ListItemAvatar>
+                      {(() => {
+                        const defaultChain = DEFAULT_CHAINS[currentChain.id];
+                        const logoSrc = defaultChain?.logo || currentChain.logo;
+                        return (
+                          <Avatar src={logoSrc}>
+                            {currentChain.symbol[0]}
+                          </Avatar>
+                        );
+                      })()}
+                    </ListItemAvatar>
+                    <ListItemText 
+                      primary={currentChain.name} 
+                      secondary={`$${nativePrice.toLocaleString()}`} 
+                    />
+                  </ListItemButton>
                 </ListItem>
               )}
 
-              {/* ERC20 Tokens */}
               {tokenBalances.filter(t => t.isVisible).map((token) => (
                 <ListItem 
-                  key={token.address}
-                  sx={{ px: 1, borderRadius: 1.5, '&:hover': { bgcolor: 'surface' } }}
+                  key={`${token.chainId}-${token.address}`}
+                  disablePadding
+                  sx={{ borderRadius: 1.5, mb: 1, '&:hover': { bgcolor: 'surface' } }}
                   secondaryAction={
-                    <Box textAlign="right">
+                    <Box textAlign="right" sx={{ pointerEvents: 'none' }}>
                       <Typography fontWeight={700}>{parseFloat(token.balance).toFixed(4)} {token.symbol}</Typography>
                       <Typography variant="caption" color="text.muted">${token.usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                     </Box>
                   }
                 >
-                  <ListItemAvatar>
-                    <Box sx={{ position: 'relative' }}>
-                      <Avatar 
-                        src={token.logo} 
-                        sx={{ bgcolor: 'surface', color: 'text.primary' }}
-                      >
-                        {token.symbol?.[0] || 'T'}
-                      </Avatar>
-                      {(() => {
-                        const tokenChainId = token.chainId;
-                        const tokenChain = networks.find(n => n.id === tokenChainId) || getChain(tokenChainId);
-                        const defaultChain = DEFAULT_CHAINS[tokenChainId];
-                        const logoSrc = defaultChain?.logo || tokenChain?.logo;
-                        return (
-                          <Avatar 
-                            src={logoSrc} 
-                            sx={{ 
-                              width: 14, 
-                              height: 14, 
-                              position: 'absolute', 
-                              bottom: 0, 
-                              right: 0, 
-                              border: '1.5px solid',
-                              borderColor: 'background.paper',
-                              bgcolor: 'secondary.main',
-                              fontSize: 8
-                            }}
-                          >
-                            {tokenChain?.symbol?.[0] || '?'}
-                          </Avatar>
-                        );
-                      })()}
-                    </Box>
-                  </ListItemAvatar>
-                  <ListItemText 
-                    primary={token.symbol} 
-                    secondary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="caption" color="text.muted">${token.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</Typography>
-                        {chainId === ALL_NETWORKS_ID && (
-                          <Typography variant="caption" sx={{ bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5, fontSize: '0.6rem' }}>
-                            {(networks.find(n => n.id === token.chainId) || getChain(token.chainId))?.name}
-                          </Typography>
-                        )}
+                  <ListItemButton 
+                    onClick={() => router.push(`/dashboard/asset/${token.chainId}/${token.address}`)}
+                    sx={{ borderRadius: 1.5, py: 1.5 }}
+                  >
+                    <ListItemAvatar>
+                      <Box sx={{ position: 'relative' }}>
+                        <Avatar 
+                          src={token.logo} 
+                          sx={{ bgcolor: 'surface', color: 'text.primary' }}
+                        >
+                          {token.symbol?.[0] || 'T'}
+                        </Avatar>
+                        {(() => {
+                          const tokenChainId = token.chainId;
+                          const tokenChain = networks.find(n => n.id === tokenChainId) || getChain(tokenChainId);
+                          const defaultChain = DEFAULT_CHAINS[tokenChainId];
+                          const logoSrc = defaultChain?.logo || tokenChain?.logo;
+                          return (
+                            <Avatar 
+                              src={logoSrc} 
+                              sx={{ 
+                                width: 14, 
+                                height: 14, 
+                                position: 'absolute', 
+                                bottom: 0, 
+                                right: 0, 
+                                border: '1.5px solid',
+                                borderColor: 'background.paper',
+                                bgcolor: 'secondary.main',
+                                fontSize: 8
+                              }}
+                            >
+                              {tokenChain?.symbol?.[0] || '?'}
+                            </Avatar>
+                          );
+                        })()}
                       </Box>
-                    } 
-                  />
+                    </ListItemAvatar>
+                    <ListItemText 
+                      primary={token.symbol} 
+                      secondary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" color="text.muted">${token.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</Typography>
+                          {chainId === ALL_NETWORKS_ID && (
+                            <Typography variant="caption" sx={{ bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5, fontSize: '0.6rem' }}>
+                              {(networks.find(n => n.id === token.chainId) || getChain(token.chainId))?.name}
+                            </Typography>
+                          )}
+                        </Box>
+                      } 
+                    />
+                  </ListItemButton>
                 </ListItem>
               ))}
             </List>
