@@ -298,106 +298,186 @@ export const useWalletStore = create<WalletStore>()(
         const { evm, btcSegwit, btcTaproot, solana, bch, ltc } = activeWallet.addresses;
         if (!evm) return;
 
-        try {
-          const chain = networks.find(n => n.id === chainId) || getChain(chainId);
-          
-          if (chain.type === 'bitcoin') {
-            const btcAddress = chain.bitcoinType === 'segwit' ? btcSegwit : btcTaproot;
-            const targetAddress = chain.id === (await import('@/lib/blockchain/chains')).LTC_CHAIN_ID ? ltc : btcAddress;
+        const { ALL_NETWORKS_ID } = await import('@/lib/blockchain/chains');
+
+        const fetchChainData = async (targetChainId: number): Promise<{ nativeBal: string, tokens: TokenBalance[] }> => {
+          try {
+            const chain = networks.find(n => n.id === targetChainId) || getChain(targetChainId);
             
-            if (!targetAddress) return;
+            // --- BITCOIN / LTC ---
+            if (chain.type === 'bitcoin') {
+              const btcAddress = chain.bitcoinType === 'segwit' ? btcSegwit : btcTaproot;
+              const targetAddress = targetChainId === (await import('@/lib/blockchain/chains')).LTC_CHAIN_ID ? ltc : btcAddress;
+              if (!targetAddress) return { nativeBal: '0', tokens: [] };
 
-            const response = await fetch(`${chain.rpc}/address/${targetAddress}`);
-            const data = await response.json();
-            const balanceSats = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
-            const balanceLtcOrBtc = (balanceSats / 100000000).toString();
-            
-            set({ balance: balanceLtcOrBtc, tokenBalances: [] });
-            return;
-          }
+              const response = await fetch(`${chain.rpc}/address/${targetAddress}`);
+              const data = await response.json();
+              const balanceSats = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
+              const balanceStr = (balanceSats / 100000000).toString();
+              
+              const prices = await fetchLivePrices([targetChainId === (await import('@/lib/blockchain/chains')).LTC_CHAIN_ID ? 'litecoin' : 'bitcoin']);
+              const price = prices[targetChainId === (await import('@/lib/blockchain/chains')).LTC_CHAIN_ID ? 'litecoin' : 'bitcoin'] || 0;
 
-          if (chain.type === 'solana') {
-            if (!solana) return;
-            const { fetchSolanaBalance } = await import('@/lib/blockchain/solana');
-            const solBalance = await fetchSolanaBalance(chain.rpc, solana);
-            set({ balance: solBalance, tokenBalances: [] });
-            return;
-          }
+              return { 
+                nativeBal: balanceStr, 
+                tokens: [{
+                  address: 'native',
+                  symbol: chain.symbol,
+                  name: chain.name,
+                  decimals: 8,
+                  chainId: targetChainId,
+                  balance: balanceStr,
+                  price,
+                  usdValue: parseFloat(balanceStr) * price,
+                  isVisible: true,
+                  logo: chain.logo
+                }]
+              };
+            }
 
-          if (chain.type === 'bitcoin-cash') {
-            if (!bch) return;
-            const { fetchBchBalance } = await import('@/lib/blockchain/bitcoincash');
-            const bchBal = await fetchBchBalance(bch);
-            set({ balance: bchBal, tokenBalances: [] });
-            return;
-          }
+            // --- SOLANA ---
+            if (chain.type === 'solana') {
+              if (!solana) return { nativeBal: '0', tokens: [] };
+              const { fetchSolanaBalance } = await import('@/lib/blockchain/solana');
+              const solBalance = await fetchSolanaBalance(chain.rpc, solana);
+              const prices = await fetchLivePrices(['solana']);
+              const price = prices['solana'] || 0;
 
-          const NON_EVM_TYPES = ['near', 'sui', 'aptos', 'cardano', 'xrp', 'ton', 'tron'];
-          if (NON_EVM_TYPES.includes(chain.type as any)) {
-            set({ balance: '0.00', tokenBalances: [] });
-            return;
-          }
+              return { 
+                nativeBal: solBalance, 
+                tokens: [{
+                  address: 'native',
+                  symbol: chain.symbol,
+                  name: chain.name,
+                  decimals: 9,
+                  chainId: targetChainId,
+                  balance: solBalance,
+                  price,
+                  usdValue: parseFloat(solBalance) * price,
+                  isVisible: true,
+                  logo: chain.logo
+                }]
+              };
+            }
 
-          const provider = new JsonRpcProvider(
-            chain.rpc, 
-            { chainId: chain.id, name: chain.name.toLowerCase() }, 
-            { staticNetwork: true }
-          );
-          
-          const balanceWei = await provider.getBalance(evm);
-          const nativeBal = formatEther(balanceWei);
-          
-          const tokensToFetch = [
-            ...(POPULAR_TOKENS[chainId] || []),
-            ...customTokens.filter(t => t.chainId === chainId)
-          ];
+            // --- BITCOIN CASH ---
+            if (chain.type === 'bitcoin-cash') {
+              if (!bch) return { nativeBal: '0', tokens: [] };
+              const { fetchBchBalance } = await import('@/lib/blockchain/bitcoincash');
+              const bchBal = await fetchBchBalance(bch);
+              const prices = await fetchLivePrices(['bitcoin-cash']);
+              const price = prices['bitcoin-cash'] || 0;
 
-          const tokenAddresses = tokensToFetch.map(t => t.address);
-          const coingeckoIds = tokensToFetch.map(t => t.coingeckoId).filter(Boolean) as string[];
-          
-          // 1. Fetch all prices (Native + Tokens with IDs) in one go
-          const allPrices = await fetchLivePrices(coingeckoIds);
-          
-          // 2. Identify tokens that don't have a coingeckoId - these must be fetched by address
-          const tokensByAddress = tokensToFetch.filter(t => !t.coingeckoId);
-          let addressPrices: Record<string, number> = {};
-          
-          if (tokensByAddress.length > 0) {
-            addressPrices = await fetchTokenPricesByAddress(chainId, tokensByAddress.map(t => t.address));
-          }
+              return { 
+                nativeBal: bchBal, 
+                tokens: [{
+                  address: 'native',
+                  symbol: chain.symbol,
+                  name: chain.name,
+                  decimals: 8,
+                  chainId: targetChainId,
+                  balance: bchBal,
+                  price,
+                  usdValue: parseFloat(bchBal) * price,
+                  isVisible: true,
+                  logo: chain.logo
+                }]
+              };
+            }
 
-          const tokenBals: TokenBalance[] = await Promise.all(
-            tokensToFetch.map(async (token) => {
-              const isVisible = !hiddenTokens.includes(`${chainId}:${token.address}`);
-              try {
-                const { balance } = await fetchTokenBalance(chain.rpc, token.address, evm, chainId);
-                
-                // Get price from either ID-based fetch or address-based fetch
-                let price = 0;
-                if (token.coingeckoId && allPrices[token.coingeckoId]) {
-                  price = allPrices[token.coingeckoId];
-                } else {
-                  price = addressPrices[token.address.toLowerCase()] || 0;
-                }
-                
-                const usdValue = parseFloat(balance) * price;
-                return { ...token, balance, price, usdValue, isVisible };
-              } catch (e) {
-                return { ...token, balance: '0', price: 0, usdValue: 0, isVisible };
+            // --- EVM ---
+            if (chain.type === 'evm') {
+              const provider = new JsonRpcProvider(chain.rpc, { chainId: chain.id, name: chain.name.toLowerCase() }, { staticNetwork: true });
+              const balanceWei = await provider.getBalance(evm);
+              const nativeBal = formatEther(balanceWei);
+              
+              const nativeId = CHAIN_PRICE_IDS[targetChainId];
+              const tokensToFetch = [
+                ...(POPULAR_TOKENS[targetChainId] || []),
+                ...customTokens.filter(t => t.chainId === targetChainId)
+              ];
+
+              const coingeckoIds = tokensToFetch.map(t => t.coingeckoId).filter(Boolean) as string[];
+              if (nativeId) coingeckoIds.push(nativeId);
+
+              const allPrices = await fetchLivePrices(coingeckoIds);
+              const nativePrice = allPrices[nativeId] || 0;
+
+              const tokensByAddress = tokensToFetch.filter(t => !t.coingeckoId);
+              let addressPrices: Record<string, number> = {};
+              if (tokensByAddress.length > 0) {
+                addressPrices = await fetchTokenPricesByAddress(targetChainId, tokensByAddress.map(t => t.address));
               }
-            })
-          );
 
-          set({ balance: nativeBal, tokenBalances: tokenBals });
+              const tokenBals: TokenBalance[] = await Promise.all(
+                tokensToFetch.map(async (token) => {
+                  const isVisible = !hiddenTokens.includes(`${targetChainId}:${token.address}`);
+                  try {
+                    const { balance } = await fetchTokenBalance(chain.rpc, token.address, evm, targetChainId);
+                    let price = token.coingeckoId ? (allPrices[token.coingeckoId] || 0) : (addressPrices[token.address.toLowerCase()] || 0);
+                    const usdValue = parseFloat(balance) * price;
+                    return { ...token, balance, price, usdValue, isVisible };
+                  } catch (e) {
+                    return { ...token, balance: '0', price: 0, usdValue: 0, isVisible };
+                  }
+                })
+              );
+
+              // Add native asset to the list if we are in All Networks mode
+              const nativeToken: TokenBalance = {
+                address: 'native',
+                symbol: chain.symbol,
+                name: chain.name,
+                decimals: 18,
+                chainId: targetChainId,
+                balance: nativeBal,
+                price: nativePrice,
+                usdValue: parseFloat(nativeBal) * nativePrice,
+                isVisible: true,
+                logo: chain.logo
+              };
+
+              return { nativeBal, tokens: [nativeToken, ...tokenBals] };
+            }
+
+            return { nativeBal: '0', tokens: [] };
+          } catch (e) {
+            console.error(`Error fetching for chain ${targetChainId}:`, e);
+            return { nativeBal: '0', tokens: [] };
+          }
+        };
+
+        try {
+          if (chainId === ALL_NETWORKS_ID) {
+            // Aggregate all networks
+            const results = await Promise.all(networks.filter(n => n.id !== ALL_NETWORKS_ID).map(n => fetchChainData(n.id)));
+            const allTokens = results.flatMap(r => r.tokens).filter(t => parseFloat(t.balance) > 0);
+            
+            set({ 
+              balance: '0.00', // Total USD will be computed in UI or here
+              tokenBalances: allTokens 
+            });
+          } else {
+            const { nativeBal, tokens } = await fetchChainData(chainId);
+            // In single chain mode, we separate native balance from tokens for compatibility
+            const nativeToken = tokens.find(t => t.address === 'native');
+            const otherTokens = tokens.filter(t => t.address !== 'native');
+            
+            set({ 
+              balance: nativeBal, 
+              tokenBalances: otherTokens 
+            });
+          }
         } catch (error) {
-          console.error(`Balance update failed for chain ${chainId}:`, error);
+          console.error(`Balance update failed:`, error);
         }
       },
 
       updatePrices: async () => {
         const { chainId } = get();
-        if (CHAIN_PRICE_IDS[chainId]) {
-          const prices = await fetchLivePrices([chainId]);
+        const cgId = CHAIN_PRICE_IDS[chainId];
+        if (cgId) {
+          const prices = await fetchLivePrices([cgId]);
           set({ prices });
         }
       },

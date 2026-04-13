@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { ArrowBack, Add, NetworkCheck, Delete, Edit, RestartAlt } from '@mui/icons-material';
 import { useWalletStore } from '@/store/useWalletStore';
-import { DEFAULT_CHAINS, Chain } from '@/lib/blockchain/chains';
+import { DEFAULT_CHAINS, Chain, ALL_NETWORKS_ID } from '@/lib/blockchain/chains';
 
 export default function ManageNetworksPage() {
   const router = useRouter();
@@ -109,19 +109,22 @@ export default function ManageNetworksPage() {
         </Box>
         
         <List sx={{ mb: 4 }}>
-          {networks.map((chain) => (
+          {/* Ensure All Networks is always at the top if it exists in networks */}
+          {[...networks].sort((a, b) => (a.id === ALL_NETWORKS_ID ? -1 : b.id === ALL_NETWORKS_ID ? 1 : 0)).map((chain) => (
             <Paper key={chain.id} sx={{ mb: 1, borderRadius: 1.5, border: '1px solid', borderColor: 'border', overflow: 'hidden' }}>
               <ListItem 
                 disablePadding
                 secondaryAction={
-                  <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    <IconButton size="small" onClick={() => handleEdit(chain)}>
-                      <Edit sx={{ fontSize: 18 }} />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => removeNetwork(chain.id)} disabled={networks.length <= 1}>
-                      <Delete sx={{ fontSize: 18 }} color="error" />
-                    </IconButton>
-                  </Box>
+                  chain.id !== ALL_NETWORKS_ID && (
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <IconButton size="small" onClick={() => handleEdit(chain)}>
+                        <Edit sx={{ fontSize: 18 }} />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => removeNetwork(chain.id)} disabled={networks.length <= 1}>
+                        <Delete sx={{ fontSize: 18 }} color="error" />
+                      </IconButton>
+                    </Box>
+                  )
                 }
               >
                 <ListItemButton 
@@ -134,6 +137,13 @@ export default function ManageNetworksPage() {
                 >
                   <ListItemAvatar>
                     {(() => {
+                      if (chain.id === ALL_NETWORKS_ID) {
+                        return (
+                          <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
+                            <Box component="img" src="/logo.png" sx={{ width: '70%', height: '70%', objectFit: 'contain' }} />
+                          </Avatar>
+                        );
+                      }
                       const defaultChain = DEFAULT_CHAINS[chain.id];
                       const logoSrc = (isDefault(chain.id) && defaultChain?.logo) || chain.logo;
                       return (
@@ -155,7 +165,7 @@ export default function ManageNetworksPage() {
                     } 
                     secondary={
                       <Typography variant="caption" sx={{ color: 'text.muted', display: 'block', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {chain.rpc}
+                        {chain.id === ALL_NETWORKS_ID ? 'Aggregated view of all your assets' : chain.rpc}
                       </Typography>
                     } 
                   />

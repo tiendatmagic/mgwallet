@@ -92,8 +92,9 @@ export async function fetchLivePrices(customIds: string[] = []): Promise<Record<
  * Fetches current price for a specific chain ID
  */
 export async function getNativePrice(chainId: number): Promise<number> {
-  const prices = await fetchLivePrices([chainId]);
   const cgId = CHAIN_PRICE_IDS[chainId];
+  if (!cgId) return 0;
+  const prices = await fetchLivePrices([cgId]);
   return prices[cgId] || 0;
 }
 

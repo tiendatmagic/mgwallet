@@ -26,8 +26,19 @@ export const CARDANO_CHAIN_ID = -23;
 export const XRP_CHAIN_ID = -24;
 export const TON_CHAIN_ID = -25;
 export const TRX_CHAIN_ID = -26;
+export const ALL_NETWORKS_ID = 0;
 
 export const DEFAULT_CHAINS: Record<number, Chain> = {
+  [ALL_NETWORKS_ID]: {
+    id: ALL_NETWORKS_ID,
+    name: 'All Networks',
+    rpc: '',
+    explorer: '',
+    symbol: 'USD',
+    logo: '/logo.png', // Main app logo
+    color: '#000000',
+    type: 'evm', // Virtual
+  },
   1: {
     id: 1,
     name: 'Ethereum',
@@ -203,7 +214,7 @@ export const DEFAULT_CHAINS: Record<number, Chain> = {
   },
 };
 
-export const DEFAULT_CHAIN_ID = 1;
+export const DEFAULT_CHAIN_ID = ALL_NETWORKS_ID;
 
 export function getChain(chainId: number, customChains: Chain[] = []): Chain {
   const allChains = { ...DEFAULT_CHAINS, ...Object.fromEntries(customChains.map(c => [c.id, c])) };

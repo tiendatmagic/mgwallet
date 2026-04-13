@@ -34,7 +34,7 @@ import {
   PhonelinkLock,
   Fingerprint
 } from '@mui/icons-material';
-import { getChain, DEFAULT_CHAINS } from '@/lib/blockchain/chains';
+import { getChain, DEFAULT_CHAINS, ALL_NETWORKS_ID } from '@/lib/blockchain/chains';
 import { QRCodeSVG } from 'qrcode.react';
 
 /**
@@ -242,7 +242,7 @@ export default function DashboardPage() {
 
   const displayAddress = getDisplayAddress();
 
-  const cgId = CHAIN_PRICE_IDS[chainId];
+  const cgId = chainId === ALL_NETWORKS_ID ? '' : CHAIN_PRICE_IDS[chainId];
   const nativePrice = prices[cgId] || 0;
   
   // Calculate total portfolio USD value (native + tokens)
@@ -338,6 +338,13 @@ export default function DashboardPage() {
         <Box>
           <IconButton size="small" onClick={() => router.push('/dashboard/networks')} sx={{ bgcolor: 'surface', mr: 1 }}>
             {(() => {
+              if (chainId === ALL_NETWORKS_ID) {
+                return (
+                  <Avatar sx={{ width: 22, height: 22, bgcolor: 'primary.main' }}>
+                    <Box component="img" src="/logo.png" sx={{ width: '70%', height: '70%', objectFit: 'contain' }} />
+                  </Avatar>
+                );
+              }
               const defaultChain = DEFAULT_CHAINS[currentChain.id];
               const logoSrc = defaultChain?.logo || currentChain.logo;
               return (
@@ -518,32 +525,34 @@ export default function DashboardPage() {
         {activeTab === 'assets' ? (
           <Box sx={{ flex: 1, overflowY: 'auto' }}>
             <List>
-              {/* Native Asset */}
-              <ListItem 
-                sx={{ px: 1, borderRadius: 1.5, '&:hover': { bgcolor: 'surface' } }}
-                secondaryAction={
-                  <Box textAlign="right">
-                    <Typography fontWeight={700}>{parseFloat(balance).toFixed(4)} {currentChain.symbol}</Typography>
-                    <Typography variant="caption" color="text.muted">${nativeUsd.toFixed(2)}</Typography>
-                  </Box>
-                }
-              >
-                <ListItemAvatar>
-                  {(() => {
-                    const defaultChain = DEFAULT_CHAINS[currentChain.id];
-                    const logoSrc = defaultChain?.logo || currentChain.logo;
-                    return (
-                      <Avatar src={logoSrc}>
-                        {currentChain.symbol[0]}
-                      </Avatar>
-                    );
-                  })()}
-                </ListItemAvatar>
-                <ListItemText 
-                  primary={currentChain.name} 
-                  secondary={`$${nativePrice.toLocaleString()}`} 
-                />
-              </ListItem>
+              {/* Native Asset (only shown for single chain) */}
+              {chainId !== ALL_NETWORKS_ID && (
+                <ListItem 
+                  sx={{ px: 1, borderRadius: 1.5, '&:hover': { bgcolor: 'surface' } }}
+                  secondaryAction={
+                    <Box textAlign="right">
+                      <Typography fontWeight={700}>{parseFloat(balance).toFixed(4)} {currentChain.symbol}</Typography>
+                      <Typography variant="caption" color="text.muted">${nativeUsd.toFixed(2)}</Typography>
+                    </Box>
+                  }
+                >
+                  <ListItemAvatar>
+                    {(() => {
+                      const defaultChain = DEFAULT_CHAINS[currentChain.id];
+                      const logoSrc = defaultChain?.logo || currentChain.logo;
+                      return (
+                        <Avatar src={logoSrc}>
+                          {currentChain.symbol[0]}
+                        </Avatar>
+                      );
+                    })()}
+                  </ListItemAvatar>
+                  <ListItemText 
+                    primary={currentChain.name} 
+                    secondary={`$${nativePrice.toLocaleString()}`} 
+                  />
+                </ListItem>
+              )}
 
               {/* ERC20 Tokens */}
               {tokenBalances.filter(t => t.isVisible).map((token) => (
@@ -566,8 +575,10 @@ export default function DashboardPage() {
                         {token.symbol?.[0] || 'T'}
                       </Avatar>
                       {(() => {
-                        const defaultChain = DEFAULT_CHAINS[currentChain.id];
-                        const logoSrc = defaultChain?.logo || currentChain.logo;
+                        const tokenChainId = token.chainId;
+                        const tokenChain = networks.find(n => n.id === tokenChainId) || getChain(tokenChainId);
+                        const defaultChain = DEFAULT_CHAINS[tokenChainId];
+                        const logoSrc = defaultChain?.logo || tokenChain?.logo;
                         return (
                           <Avatar 
                             src={logoSrc} 
@@ -583,13 +594,25 @@ export default function DashboardPage() {
                               fontSize: 8
                             }}
                           >
-                            {currentChain.symbol[0]}
+                            {tokenChain?.symbol?.[0] || '?'}
                           </Avatar>
                         );
                       })()}
                     </Box>
                   </ListItemAvatar>
-                  <ListItemText primary={token.symbol} secondary={`$${token.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}`} />
+                  <ListItemText 
+                    primary={token.symbol} 
+                    secondary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="caption" color="text.muted">${token.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</Typography>
+                        {chainId === ALL_NETWORKS_ID && (
+                          <Typography variant="caption" sx={{ bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5, fontSize: '0.6rem' }}>
+                            {(networks.find(n => n.id === token.chainId) || getChain(token.chainId))?.name}
+                          </Typography>
+                        )}
+                      </Box>
+                    } 
+                  />
                 </ListItem>
               ))}
             </List>
